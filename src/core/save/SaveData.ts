@@ -99,11 +99,7 @@ export function computeChecksum(snapshot: GameSnapshot): string {
 }
 
 /** Snapshot を保存構造へ包む（純粋）。savedAt は呼び出し側が注入する。 */
-export function serialize(
-  snapshot: GameSnapshot,
-  savedAt: number,
-  buildVersion: string,
-): SaveData {
+export function serialize(snapshot: GameSnapshot, savedAt: number, buildVersion: string): SaveData {
   return {
     meta: {
       schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -122,7 +118,19 @@ export interface ValidationResult {
   readonly errors: readonly string[];
 }
 
-const VALID_PHASES = new Set(['booting', 'loading', 'title', 'preparing', 'playing', 'paused', 'deciding', 'ending', 'epilogue', 'reflection', 'error']);
+const VALID_PHASES = new Set([
+  'booting',
+  'loading',
+  'title',
+  'preparing',
+  'playing',
+  'paused',
+  'deciding',
+  'ending',
+  'epilogue',
+  'reflection',
+  'error',
+]);
 
 /**
  * 構造・値域の検証（B4 §9.5 検証項目）。チェックサムは verifyChecksum が別途担う。
@@ -152,7 +160,11 @@ export function validateStructure(value: unknown): ValidationResult {
   }
 
   const determinism = data.determinism as Record<string, unknown> | undefined;
-  if (!determinism || typeof determinism.seed !== 'number' || typeof determinism.streamState !== 'number') {
+  if (
+    !determinism ||
+    typeof determinism.seed !== 'number' ||
+    typeof determinism.streamState !== 'number'
+  ) {
     push('data.determinism is invalid');
   }
 
@@ -199,7 +211,9 @@ export function verifyChecksum(save: SaveData): boolean {
  * Sprint 1 時点では過去版が無いため空。スキーマを +1 するたびに、
  * 「その一つ前の版 → 新版」への関数を必ず追加する（AA-77 の防止）。
  */
-export const MIGRATIONS: Readonly<Record<number, (raw: Record<string, unknown>) => Record<string, unknown>>> = {};
+export const MIGRATIONS: Readonly<
+  Record<number, (raw: Record<string, unknown>) => Record<string, unknown>>
+> = {};
 
 export type MigrationResult =
   | { readonly ok: true; readonly value: Record<string, unknown> }
@@ -212,7 +226,10 @@ export type MigrationResult =
  */
 export function migrate(raw: Record<string, unknown>, fromVersion: number): MigrationResult {
   if (fromVersion > CURRENT_SCHEMA_VERSION) {
-    return { ok: false, reason: `schema version ${fromVersion} is newer than supported ${CURRENT_SCHEMA_VERSION}` };
+    return {
+      ok: false,
+      reason: `schema version ${fromVersion} is newer than supported ${CURRENT_SCHEMA_VERSION}`,
+    };
   }
   let current = raw;
   for (let v = fromVersion; v < CURRENT_SCHEMA_VERSION; v++) {

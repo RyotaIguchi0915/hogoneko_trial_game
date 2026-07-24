@@ -62,6 +62,13 @@ export default tseslint.config(
       // --- 禁止語彙（B0 §10.2 / AD-52） ---
       'id-denylist': ['error', ...FORBIDDEN_IDENTIFIERS],
 
+      // --- 循環依存の検出（B4 ⑦ DR / EP-03 依存グラフ検証・EP-10） ---
+      // 同層の相互参照は Event Bus 経由にする（AA-17 回避）。型のみの循環も許さない。
+      'import/no-cycle': ['error', { ignoreExternal: true }],
+
+      // --- デバッグコード検出（EP-03 Success Criteria） ---
+      'no-debugger': 'error',
+
       // --- 層境界（B4 §0・⑦ / DR-2/3/4） ---
       // 上位→下位のみ許可。逆流・層飛ばしは全面禁止。
       'import/no-restricted-paths': [
@@ -72,8 +79,7 @@ export default tseslint.config(
             {
               target: L4_PRES,
               from: L2_SIM,
-              message:
-                'L4→L2 参照は憲章 I-1 違反。Perception 層（Phenomenon）経由でのみ受け取る。',
+              message: 'L4→L2 参照は憲章 I-1 違反。Perception 層（Phenomenon）経由でのみ受け取る。',
             },
             // L2 Simulation は上位（L3/L4）を参照禁止（DR-2 逆流）
             {
@@ -133,8 +139,15 @@ export default tseslint.config(
       ],
       'no-restricted-globals': [
         'error',
-        { name: 'Date', message: '決定論性のため Date を直接使わない。Time System 経由（AD-38）。' },
+        {
+          name: 'Date',
+          message: '決定論性のため Date を直接使わない。Time System 経由（AD-38）。',
+        },
       ],
+
+      // 純粋層（L0〜L3）に console を残さない（デバッグコード検出・EP-03）。
+      // 開発時の真実可視化は EP-12 Dev Tools（別層・本番除去）で行う。
+      'no-console': 'error',
     },
   },
 

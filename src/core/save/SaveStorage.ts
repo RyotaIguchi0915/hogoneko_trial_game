@@ -19,9 +19,7 @@ export interface SaveStorage {
 }
 
 /** テスト・非ブラウザ環境用のメモリ実装（純粋・決定論的）。 */
-export function createMemorySaveStorage(
-  seed?: Readonly<Record<string, string>>,
-): SaveStorage {
+export function createMemorySaveStorage(seed?: Readonly<Record<string, string>>): SaveStorage {
   const map = new Map<string, string>(seed ? Object.entries(seed) : undefined);
   return {
     read: (key) => map.get(key) ?? null,

@@ -26,11 +26,7 @@ export {
 } from './time/TimeState';
 export { TimeSystem, TimeEvents } from './time/TimeSystem';
 
-export {
-  StateStore,
-  StateEvents,
-  type PresentationStateReader,
-} from './state/StateStore';
+export { StateStore, StateEvents, type PresentationStateReader } from './state/StateStore';
 export {
   canTransitionGamePhase,
   allowedGamePhaseTransitions,

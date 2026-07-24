@@ -43,7 +43,9 @@ describe('SaveData — checksum', () => {
 
   it('値が変われば別のチェックサム', () => {
     const base = computeChecksum(sampleSnapshot());
-    const changed = computeChecksum(sampleSnapshot({ progress: { day: 2, segment: 0, phase: 'running' } }));
+    const changed = computeChecksum(
+      sampleSnapshot({ progress: { day: 2, segment: 0, phase: 'running' } }),
+    );
     expect(changed).not.toBe(base);
   });
 });
@@ -71,14 +73,26 @@ describe('SaveData — validateStructure', () => {
   });
 
   it('Day が範囲外（>30）を検出する', () => {
-    const save = serialize(sampleSnapshot({ progress: { day: 31, segment: 0, phase: 'running' } }), 1, 'x');
+    const save = serialize(
+      sampleSnapshot({ progress: { day: 31, segment: 0, phase: 'running' } }),
+      1,
+      'x',
+    );
     const result = validateStructure(save);
     expect(result.valid).toBe(false);
     expect(result.errors.join()).toMatch(/day out of range/);
   });
 
   it('必須フィールド欠落（cat 不正）を検出する', () => {
-    const broken = { meta: { schemaVersion: 1, checksum: 'x' }, data: { determinism: { seed: 1, streamState: 1 }, progress: { day: 1, segment: 0, phase: 'running' }, gamePhase: 'playing', simulation: {} } };
+    const broken = {
+      meta: { schemaVersion: 1, checksum: 'x' },
+      data: {
+        determinism: { seed: 1, streamState: 1 },
+        progress: { day: 1, segment: 0, phase: 'running' },
+        gamePhase: 'playing',
+        simulation: {},
+      },
+    };
     const result = validateStructure(broken);
     expect(result.valid).toBe(false);
     expect(result.errors.join()).toMatch(/cat is invalid/);

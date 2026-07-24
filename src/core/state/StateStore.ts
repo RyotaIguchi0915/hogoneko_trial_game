@@ -42,11 +42,11 @@ export class StateStore implements PresentationStateReader {
   constructor(
     bus: EventBus,
     initialPhase: GamePhase = 'booting',
-    initialCatState: CatState = initialCatState(),
+    initialCat: CatState = initialCatState(),
   ) {
     this.#bus = bus;
     this.#gamePhase = initialPhase;
-    this.#catState = initialCatState;
+    this.#catState = initialCat;
   }
 
   // --- Game Phase（全層可視） ---
