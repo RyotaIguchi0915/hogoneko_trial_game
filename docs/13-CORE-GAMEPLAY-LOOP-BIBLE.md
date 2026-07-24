@@ -1,7 +1,7 @@
 # 保護猫トライアル30日 — B2 Core Gameplay Loop Bible v1.0
 
 **Document Type**: Bible（B2）／ Core Gameplay Loop の統合・正式化
-**Status**: Proposed（⚠️ Segment=6 / 行動枠=2 の「暫定確定→確定」昇格は人間承認待ち・DevConst ④）
+**Status**: Accepted（Segment=6 / 行動枠=2 を確定。2026-07-24 人間承認済み・DevConst ④）
 **Resolves**: Master GDD OI-1 / Architecture Y-01・Y-10 / Simulation Rules Z-01・Z-02 / X-1
 **Last Updated**: 2026-07-24
 
@@ -19,7 +19,7 @@
 |---|---|---|
 | コア体験ループの定義 | B0 §3.3 | 確定（不変・L1） |
 | 時間粒度（Frame/Tick/Segment/Day/Trial） | B4 §6.1 / B5 §1.1 | 確定 |
-| 1日の Segment 構造（6分割） | B5 §1.2 | 暫定確定 → **本書で正式化** |
+| 1日の Segment 構造（6分割） | B5 §1.2 | **確定**（本書で正式化・2026-07-24 承認） |
 | 時間進行規則（T-1〜T-6） | B5 §1.3 | 確定 |
 | 日数構造（30日・Day0・Day30） | B5 §1.4 / 憲章§14.3 | 確定 |
 | 行動枠（在室 Segment ごと2枠） | B9 §3.3 | 確定（Z-02） |
@@ -296,8 +296,9 @@ stateDiagram-v2
 | X-1 | 行動別コスト表 | §4.3 で参照・要約 |
 | Y-10 | Architecture §6 との整合 | §3.1 で一致を確認 |
 
-**⚠️ 残る人間承認事項（DevConst ④）**: 「6 Segment」「2 行動枠」を**暫定確定→確定**へ昇格すること。
-本書は既存の暫定値を統合しただけで、新しい設計判断は導入していない。最終承認をもって Status を Accepted とする。
+**✅ 人間承認済み（DevConst ④・2026-07-24）**: 「6 Segment」「2 行動枠」を暫定確定→**確定**へ昇格。
+本書は既存の暫定値を統合したもので新しい設計判断は導入していない。承認をもって Status を **Accepted** とした。
+実測調整（付録 A）は確定を覆さない範囲で継続する。
 
 ---
 
@@ -306,3 +307,4 @@ stateDiagram-v2
 | バージョン | 日付 | 変更 |
 |---|---|---|
 | 1.0 | 2026-07-24 | 初版。B0§3.3 / B3③ / B5§1 / B9§3 を統合し OI-1 を解消（Proposed） |
+| 1.1 | 2026-07-24 | Segment=6 / 行動枠=2 を人間承認により確定。Status を Accepted に昇格 |

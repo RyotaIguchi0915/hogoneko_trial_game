@@ -32,8 +32,8 @@
 | 15 | Sprint 2 MVP Epics（叩き台） | コアループ垂直スライスの Epic 分解（Proposed v0.1） |
 | — | `docs/adr/` | Architecture Decision Records |
 
-✅ **B2/B11 とも作成済み**（[13](docs/13-CORE-GAMEPLAY-LOOP-BIBLE.md) / [14](docs/14-DATA-ARCHITECTURE-BIBLE.md)・いずれも Proposed）。
-残る人間承認: Segment=6/行動枠=2 の確定昇格（B2）、現象語彙・実コンテンツの確定（B11・Content 工程）。Master GDD ⑮ 参照。
+✅ **B2/B11 とも作成済み**（[13](docs/13-CORE-GAMEPLAY-LOOP-BIBLE.md) は **Accepted**・Segment=6/行動枠=2 確定済み / [14](docs/14-DATA-ARCHITECTURE-BIBLE.md) は Proposed）。
+残る確定: 現象語彙・実コンテンツ（B11・Content/監修 工程）。Master GDD ⑮ 参照。
 
 ---
 

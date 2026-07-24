@@ -16,7 +16,7 @@
 |---|---|---|---|
 | B0 | Project Constitution | ✅ [00](./00-PROJECT-CONSTITUTION.md) | 統合 |
 | B1 | Game Design Pillars & Experience Bible | ✅ [01](./01-EXPERIENCE-BIBLE.md) | 統合 |
-| **B2** | **Core Gameplay Loop Bible** | ✅ [13](./13-CORE-GAMEPLAY-LOOP-BIBLE.md)（Proposed） | 統合・正式化（OI-1 解消。確定昇格は人間承認待ち） |
+| **B2** | **Core Gameplay Loop Bible** | ✅ [13](./13-CORE-GAMEPLAY-LOOP-BIBLE.md)（**Accepted**） | 統合・正式化（OI-1 解消。Segment=6/行動枠=2 は 2026-07-24 確定） |
 | B3 | Player Flow Bible | ✅ [02](./02-PLAYER-FLOW.md) | 統合 |
 | B4 | Game Systems Architecture | ✅ [03](./03-SYSTEM-ARCHITECTURE.md) | 統合 |
 | B5 | Simulation Rules Bible | ✅ [04](./04-SIMULATION-RULES.md) | 統合 |
