@@ -27,9 +27,13 @@
 | 10 | Master GDD | 統合設計書（最初に読む） |
 | 11 | Development Constitution | 開発憲章（AI×人間の開発ルール） |
 | 12 | Sprint 1 Foundation Epics | 基盤 Epic |
+| 13 | Core Gameplay Loop Bible（B2） | コアループの統合・正式化（OI-1 解消） |
+| 14 | Data Architecture & Content Schema Bible（B11） | ID/JSON/ローカライズ/現象語彙の横断規約（OI-2 解消） |
+| 15 | Sprint 2 MVP Epics（叩き台） | コアループ垂直スライスの Epic 分解（Proposed v0.1） |
 | — | `docs/adr/` | Architecture Decision Records |
 
-⚠️ **未作成**: Core Gameplay Loop Bible（OI-1）/ Data Architecture Bible（OI-2）。Master GDD ⑮ 参照。
+✅ **B2/B11 とも作成済み**（[13](docs/13-CORE-GAMEPLAY-LOOP-BIBLE.md) / [14](docs/14-DATA-ARCHITECTURE-BIBLE.md)・いずれも Proposed）。
+残る人間承認: Segment=6/行動枠=2 の確定昇格（B2）、現象語彙・実コンテンツの確定（B11・Content 工程）。Master GDD ⑮ 参照。
 
 ---
 
