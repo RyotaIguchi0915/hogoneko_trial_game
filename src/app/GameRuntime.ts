@@ -24,6 +24,7 @@ import {
 import { initialCatState } from '@core/state/catState';
 import { getSimulationStateAccess, type SimulationStateAccess } from '@core/state/simulationAccess';
 import { SimulationSystem, type EnvironmentSystem } from '@simulation/index';
+import { toPhenomena, type Phenomenon } from '@perception/index';
 import { buildDefaultEnvironment } from './environment';
 
 /**
@@ -158,6 +159,19 @@ export class GameRuntime {
       });
     }
     return state;
+  }
+
+  /**
+   * 現在の観測結果（Phenomenon）を返す（EP-2.04・観測境界の越境点）。
+   * 合成ルートが L2 権限で真実を読み、Perception Gateway で数値を持たない現象へ変換する。
+   * L4 は本メソッドの戻り値（Phenomenon のみ）を受け取り、Cat State には触れられない（憲章 I-1）。
+   */
+  observe(observing = true): readonly Phenomenon[] {
+    const segment = this.#time.now().segment;
+    return toPhenomena(this.#catAccess.getCatState(), {
+      inRoom: isInRoomSegment(segment),
+      observing,
+    });
   }
 
   /** 現在状態を保存する（自動保存の実体）。失敗は結果で返る（AA-75）。 */
