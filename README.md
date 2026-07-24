@@ -75,9 +75,23 @@ npm run dev      # 開発サーバ
 
 ## 開発の作法
 
+貢献フロー・ブランチ/PR 規約・ローカル検証は **[CONTRIBUTING.md](CONTRIBUTING.md)** に集約。
 実装前に必ず **Development Constitution ⑭ Development Checklist** を通す。
 特に以下は自動検証で守られる：
 
 - 層境界（L4→L2 禁止）
 - 禁止語彙（好感度/懐き度 相当の識別子）
 - 決定論性（`Math.random` / `Date.now` 禁止）
+- 循環依存・デバッグコード（`console`/`debugger`）
+
+### ガバナンス
+
+| 文書 | 役割 |
+|---|---|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 貢献ガイド（作法・層境界・検証・PR フロー） |
+| [.github/pull_request_template.md](.github/pull_request_template.md) | PR テンプレート（Self Review + Development Checklist） |
+| [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/) | Issue テンプレート（タスク / バグ / 仕様確認 OI） |
+| [.github/CODEOWNERS](.github/CODEOWNERS) | レビュー責任者（憲章 I-1 境界ファイルを明示） |
+| [docs/adr/](docs/adr/) | ADR（運用は [README](docs/adr/README.md)・雛形は [TEMPLATE](docs/adr/TEMPLATE.md)） |
+
+CI（`.github/workflows/`）: `ci.yml`（typecheck/lint/format/test/build）と `pr-governance.yml`（Self Review 記入チェック）。

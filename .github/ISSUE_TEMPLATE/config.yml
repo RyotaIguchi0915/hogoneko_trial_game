@@ -1,0 +1,10 @@
+# Development Constitution ⑨⑫ に準拠した Issue 運用。
+# 空 Issue は無効化し、テンプレートのいずれかを選ばせる。
+blank_issues_enabled: false
+contact_links:
+  - name: 仕様の議論（Bible / Source of Truth）
+    url: https://github.com/RyotaIguchi0915/hogoneko_trial_game/tree/main/docs
+    about: 仕様は docs/ の Bible が唯一の真実源です。実装より仕様が優先されます（DevConst ②）。
+  - name: Master GDD（最初に読む統合設計書）
+    url: https://github.com/RyotaIguchi0915/hogoneko_trial_game/blob/main/docs/10-MASTER-GDD.md
+    about: 全体像・未解決事項（OI）はここに集約されています。
