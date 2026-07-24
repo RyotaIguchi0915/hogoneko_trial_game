@@ -14,6 +14,7 @@ export default defineConfig({
       '@perception': fileURLToPath(new URL('./src/perception', import.meta.url)),
       '@presentation': fileURLToPath(new URL('./src/presentation', import.meta.url)),
       '@content': fileURLToPath(new URL('./src/content', import.meta.url)),
+      '@app': fileURLToPath(new URL('./src/app', import.meta.url)),
     },
   },
   // コード分割の土台（B4 §12.3 Critical/Preload/Lazy）。詳細は最適化フェーズで。
@@ -29,7 +30,13 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       // L0〜L3（純粋ロジック）を重点計測。L4 の描画は Play Test 側（DevConst ⑩）。
-      include: ['src/core/**', 'src/simulation/**', 'src/perception/**', 'src/data/**'],
+      include: [
+        'src/core/**',
+        'src/simulation/**',
+        'src/perception/**',
+        'src/data/**',
+        'src/app/**', // 合成ルート（層外・EP-2.05）
+      ],
       exclude: [
         '**/*.test.{ts,tsx}',
         '**/index.ts', // バレル（再輸出のみ・ロジックを持たない）

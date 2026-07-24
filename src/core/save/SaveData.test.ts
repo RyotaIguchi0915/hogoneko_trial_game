@@ -8,13 +8,14 @@ import {
   CURRENT_SCHEMA_VERSION,
   type GameSnapshot,
 } from './SaveData';
+import { initialCatState } from '../state/catState';
 
 function sampleSnapshot(overrides: Partial<GameSnapshot> = {}): GameSnapshot {
   return {
     determinism: { seed: 42, streamState: 42 },
     progress: { day: 1, segment: 0, phase: 'running' },
     gamePhase: 'playing',
-    simulation: { cat: { arrived: false } },
+    simulation: { cat: initialCatState() },
     ...overrides,
   };
 }
@@ -25,15 +26,16 @@ describe('SaveData — checksum', () => {
   });
 
   it('キー順が違っても同一チェックサム（安定シリアライズ）', () => {
+    const cat = initialCatState();
     const a: GameSnapshot = {
       determinism: { seed: 1, streamState: 2 },
       progress: { day: 3, segment: 2, phase: 'running' },
       gamePhase: 'playing',
-      simulation: { cat: { arrived: true } },
+      simulation: { cat },
     };
     // 意味的に同一だが構築順が異なるオブジェクト
     const b = {
-      simulation: { cat: { arrived: true } },
+      simulation: { cat },
       gamePhase: 'playing',
       progress: { phase: 'running', segment: 2, day: 3 },
       determinism: { streamState: 2, seed: 1 },

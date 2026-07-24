@@ -1,29 +1,40 @@
-import { GameManager } from '../module/GameManager';
-import { createEventBus, type EventBus } from '../events/EventBus';
-import { createRng, restoreRng, type Rng } from '../rng';
-import { TimeSystem } from '../time/TimeSystem';
 import {
+  GameManager,
+  createEventBus,
+  createRng,
+  restoreRng,
+  TimeSystem,
   initialTime,
+  isInRoomSegment,
   DEFAULT_TRIAL_CONFIG,
+  StateStore,
+  SaveSystem,
+  type EventBus,
+  type Rng,
   type TimeState,
   type TrialConfig,
-} from '../time/TimeState';
-import { StateStore } from '../state/StateStore';
-import { initialCatState, type CatState } from '../state/catState';
-import type { GamePhase } from '../state/gamePhase';
-import { getSimulationStateAccess, type SimulationStateAccess } from '../state/simulationAccess';
-import { SaveSystem, type Clock, type RestoreStatus, type SaveResult } from '../save/SaveSystem';
-import type { SaveStorage } from '../save/SaveStorage';
-import type { GameSnapshot } from '../save/SaveData';
+  type GamePhase,
+  type Clock,
+  type RestoreStatus,
+  type SaveResult,
+  type SaveStorage,
+  type GameSnapshot,
+  type TruthReader,
+} from '@core/index';
+import { initialCatState } from '@core/state/catState';
+import { getSimulationStateAccess, type SimulationStateAccess } from '@core/state/simulationAccess';
+import { SimulationSystem } from '@simulation/index';
 
 /**
- * Game Runtime — 5層貫通の合成ルート（L1 Core / EP-14 の中核）
+ * Game Runtime — 5層貫通の合成ルート（合成層 src/app / EP-14・EP-2.05）
  *
- * 「何を組み立て、セーブから何を再構築するか」を一箇所に集約する。
- * ⚠️ Cat State の捕捉/復元は simulationAccess（L2 権限）を Core 内部でのみ使う。
+ * 「何を組み立て、セーブから何を再構築し、1 Segment で何を駆動するか」を一箇所に集約する。
+ *
+ * ⚠️ 本モジュールは層（L0〜L4）に属さない**合成ルート**である。ゆえに L1 Core と L2 Simulation の
+ *    双方を import できる（L1 core は L2 を import できないため、L2 の駆動は層外で行う・EP-2.05）。
+ * ⚠️ Cat State の捕捉/駆動は simulationAccess / SimulationSystem（L2 権限）に閉じる。
  *    L4 は本 Runtime を不透明ハンドルとして扱い、Cat State には決して触れられない（憲章 I-1）。
  * ⚠️ セーブからの復元は「再構築」であって「巻き戻し」ではない（Pillar 4）。
- *    したがって起動時にのみシステムを snapshot から生成する。
  */
 
 /** L4 に安全な読み取り面。Cat State（真実）を含まない。 */
@@ -33,18 +44,6 @@ export interface RuntimeReader {
   getProgress(): TimeState;
   /** 起動時の復元経路（診断・静かな通知用）。 */
   getRestoreStatus(): RestoreStatus;
-}
-
-/**
- * 真実（Cat State を含む）の読み取り専用インターフェース。
- * ⚠️ 開発ビルド限定のデバッグ経路（B4 §11.5 / EP-12）でのみ使う。
- *    本番では main.tsx の import.meta.env.DEV ガードにより、これを使う経路ごと除去される。
- */
-export interface TruthReader {
-  getGamePhase(): GamePhase;
-  getProgress(): TimeState;
-  getCatState(): Readonly<CatState>;
-  getRngState(): number;
 }
 
 export interface GameRuntimeDeps {
@@ -63,6 +62,7 @@ export class GameRuntime {
   readonly #time: TimeSystem;
   readonly #store: StateStore;
   readonly #catAccess: SimulationStateAccess;
+  readonly #sim: SimulationSystem;
   readonly #save: SaveSystem;
   #rng: Rng;
   #seed: number;
@@ -94,6 +94,7 @@ export class GameRuntime {
     }
 
     this.#catAccess = getSimulationStateAccess(this.#store);
+    this.#sim = new SimulationSystem(this.#store);
 
     this.#manager = new GameManager();
     this.#manager.register(this.#time).register(this.#save);
@@ -118,11 +119,7 @@ export class GameRuntime {
     };
   }
 
-  /**
-   * 真実（Cat State を含む）の読み取り専用リーダを返す（B4 §11.5 / EP-12）。
-   * ⚠️ 開発ビルド限定のデバッグ経路からのみ使う。読み取り専用で状態を変更しない。
-   *    本番では呼び出し側（main.tsx）の DEV ガードにより経路ごと除去される。
-   */
+  /** 真実（Cat State を含む）の読み取り専用リーダ（開発ビルド限定・B4 §11.5 / EP-12）。 */
   createTruthReader(): TruthReader {
     return {
       getGamePhase: () => this.#store.getGamePhase(),
@@ -142,9 +139,21 @@ export class GameRuntime {
     };
   }
 
-  /** 1 Segment 進める（副作用: TimeEvents 発行）。保存は呼び出し側が明示する。 */
+  /**
+   * 1 Segment 進める。時間を進めた上で、その Segment 分の猫の真実を推移させる（B5 §8.1）。
+   * 在室 Segment（B2 §3.2: SG-2/4/5 = index 1/3/4）は直接観測の対象、不在は痕跡（EP-2.06）。
+   * ⚠️ トライアル終了後（phase='ended'）は Simulation を回さない（AP-08）。
+   */
   advanceSegment(): TimeState {
-    return this.#time.advanceSegment();
+    const state = this.#time.advanceSegment();
+    if (state.phase === 'running') {
+      this.#sim.updateSegment({
+        day: state.day,
+        segment: state.segment,
+        inRoom: isInRoomSegment(state.segment),
+      });
+    }
+    return state;
   }
 
   /** 現在状態を保存する（自動保存の実体）。失敗は結果で返る（AA-75）。 */

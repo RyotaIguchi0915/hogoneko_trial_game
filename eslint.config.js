@@ -18,6 +18,8 @@ const L1_CORE = './src/core';
 const L2_SIM = './src/simulation';
 const L3_PERC = './src/perception';
 const L4_PRES = './src/presentation';
+// 合成ルート（層外）。L1 Core と L2 Simulation を組み立てる（EP-2.05）。
+const APP_ROOT = './src/app';
 
 // 禁止語彙（B0 §10.2）を識別子に持ち込ませない。
 // 内部状態は Trust / Familiarity 等を使う。「好感度/懐き度」相当は禁止。
@@ -112,6 +114,12 @@ export default tseslint.config(
               message:
                 'Cat State は L2 限定（憲章 I-1）。L3/L4 は権限トークンを取得できない。Phenomenon 経由で受け取る。',
             },
+            // 合成ルート（src/app）は層外。下位層（L0〜L3）から import させない（依存の逆流防止）。
+            {
+              target: [L0_DATA, L1_CORE, L2_SIM, L3_PERC],
+              from: APP_ROOT,
+              message: 'src/app は合成ルート（層外）。下位層から import しない（EP-2.05）。',
+            },
             // ⚠️ L3→L2 を Perception Gateway 経由のみに限定する制約は EP-10 で追加する。
           ],
         },
@@ -122,7 +130,7 @@ export default tseslint.config(
   // --- 決定論性の強制（L0〜L3）: Math.random / Date.now 禁止（AD-17 / AD-38） ---
   // RNG は RNG Service、時間は Time System 経由（B4 C-05 / C-02 / G-3）。
   {
-    files: ['src/data/**', 'src/core/**', 'src/simulation/**', 'src/perception/**'],
+    files: ['src/data/**', 'src/core/**', 'src/simulation/**', 'src/perception/**', 'src/app/**'],
     rules: {
       'no-restricted-properties': [
         'error',

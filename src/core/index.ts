@@ -33,6 +33,8 @@ export {
   type GamePhase,
 } from './state/gamePhase';
 export type { CatState } from './state/catState';
+// ⚠️ Needs/Affect/Relationship/Behavior の詳細型・initialCatState は L4 向けバレルに出さない。
+//    L2 Simulation は '@core/state/catState' を直接参照する（憲章 I-1・値を L4 に露出しない）。
 
 // --- Save（B4 ⑨ / EP-08） ---
 // ⚠️ storage の具体（localStorage 等）は L4 が実装し、注入する。
@@ -56,6 +58,8 @@ export {
 } from './save/SaveData';
 export type { GameSnapshot, SaveData, SaveMeta } from './save/SaveData';
 
-// --- Runtime（5層貫通の合成ルート / EP-14） ---
-export { GameRuntime } from './runtime/GameRuntime';
-export type { RuntimeReader, GameRuntimeDeps, TruthReader } from './runtime/GameRuntime';
+// --- 真実の読み取り面（開発ビルド限定・EP-12）。実装は合成ルート src/app。 ---
+export type { TruthReader } from './truthReader';
+
+// ⚠️ 合成ルート GameRuntime は src/app（層外）へ移設した（EP-2.05）。
+//    L1 core は L2 Simulation を import できないため、L2 を駆動する合成は層外で行う。

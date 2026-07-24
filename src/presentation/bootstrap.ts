@@ -1,11 +1,13 @@
-import { GameRuntime, DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock } from '@core/index';
+import { DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock } from '@core/index';
+import { GameRuntime } from '@app/index';
 import type { AppView } from './App';
 
 /**
  * Bootstrap — 起動配線の本体（EP-14）。副作用の注入点を引数に集約し、テスト可能にする。
  *
  * ブラウザ固有依存（storage/clock/seed）は呼び出し側（main.tsx）が渡す。
- * ⚠️ この層は L2 を import しない。受け取るのは全体進行のみ（憲章 I-1）。
+ * ⚠️ この層は L2 を**直接** import しない。合成ルート（src/app）越しに不透明ハンドルを受け取り、
+ *    受け取るのは全体進行のみ（憲章 I-1・Cat State には到達しない）。
  */
 export interface BootstrapDeps {
   readonly storage: SaveStorage;

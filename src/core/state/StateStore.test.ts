@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createEventBus } from '../events/EventBus';
 import { StateStore, StateEvents } from './StateStore';
 import { getSimulationStateAccess } from './simulationAccess';
+import { initialCatState } from './catState';
 
 describe('StateStore — Game Phase', () => {
   it('初期フェーズを保持する', () => {
@@ -32,9 +33,10 @@ describe('StateStore — Cat State は L2 限定（憲章 I-1 / SM-5）', () => 
     const store = new StateStore(createEventBus());
     const access = getSimulationStateAccess(store);
 
-    expect(access.getCatState()).toEqual({ arrived: false });
-    access.applyCatState({ arrived: true });
-    expect(access.getCatState()).toEqual({ arrived: true });
+    expect(access.getCatState()).toEqual(initialCatState());
+    const next = { ...initialCatState(), arrived: true };
+    access.applyCatState(next);
+    expect(access.getCatState()).toEqual(next);
   });
 
   it('PresentationStateReader インターフェースに Cat State アクセスが無い', () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createRng, type GameSnapshot } from '@core/index';
+import { initialCatState } from '@core/state/catState';
 import { expectDeterministic, expectSeededDeterministic } from './utils/determinism';
 import { expectSnapshotRoundTrip } from './utils/saveRoundTrip';
 
@@ -31,7 +32,7 @@ describe('セーブ往復テストの枠組み', () => {
       determinism: { seed: 7, streamState: 11 },
       progress: { day: 4, segment: 2, phase: 'running' },
       gamePhase: 'playing',
-      simulation: { cat: { arrived: true } },
+      simulation: { cat: { ...initialCatState(), arrived: true } },
     };
     expectSnapshotRoundTrip(snapshot);
   });
