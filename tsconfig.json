@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Strictness — DevConst §1.2 可読性・保守性の土台 */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Layer path aliases — 層をまたぐ import を明示化（B4 §2.1） */
+    "baseUrl": ".",
+    "paths": {
+      "@data/*": ["src/data/*"],
+      "@core/*": ["src/core/*"],
+      "@simulation/*": ["src/simulation/*"],
+      "@perception/*": ["src/perception/*"],
+      "@presentation/*": ["src/presentation/*"],
+      "@content/*": ["src/content/*"]
+    }
+  },
+  "include": ["src", "tests"]
+}
