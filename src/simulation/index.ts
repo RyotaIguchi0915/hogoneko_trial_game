@@ -4,3 +4,13 @@
 export { SimulationSystem } from './SimulationSystem';
 export { updateCatSegment, type SegmentContext, type CatEnvironmentInput } from './segmentUpdate';
 export { effectiveUrgency, clamp01, clamp, PROVISIONAL } from './catDynamics';
+export { EnvironmentSystem, type ZoneEnvironment } from './environment/EnvironmentSystem';
+export {
+  computeZoneAttributes,
+  computeZoneSecurity,
+  computeZoneComfort,
+  exitScore,
+  thermalFit,
+  lightFit,
+  ZONE_WEIGHTS,
+} from './environment/zone';
