@@ -33,7 +33,8 @@
       "@simulation/*": ["src/simulation/*"],
       "@perception/*": ["src/perception/*"],
       "@presentation/*": ["src/presentation/*"],
-      "@content/*": ["src/content/*"]
+      "@content/*": ["src/content/*"],
+      "@app/*": ["src/app/*"]
     }
   },
   "include": ["src", "tests"]
