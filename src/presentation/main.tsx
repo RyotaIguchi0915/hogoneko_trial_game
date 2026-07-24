@@ -32,6 +32,15 @@ window.addEventListener('beforeunload', () => {
   runtime.save();
 });
 
+// 開発ビルド限定: 真実インスペクタを起動（B4 §11.5 / EP-12）。
+// ⚠️ import.meta.env.DEV は本番ビルドで false に置換され、この動的 import ごと除去される。
+//    → 本番バンドルに devtools（真実の可視化経路）は一切含まれない。
+if (import.meta.env.DEV) {
+  void import('../devtools/TruthInspector').then(({ mountTruthInspector }) => {
+    mountTruthInspector(runtime.createTruthReader());
+  });
+}
+
 createRoot(rootElement).render(
   <StrictMode>
     <App view={view} />

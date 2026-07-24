@@ -48,10 +48,19 @@ jobs:
       - name: Format check
         run: npm run format:check
 
-      # --- テスト（Unit/Integration/再現性/セーブ往復 / B4 §14.2） ---
-      - name: Test
-        run: npm test
+      # --- テスト + カバレッジ闾値ゲート（Unit/Integration/再現性/セーブ往復 / B4 §14.2・EP-11） ---
+      - name: Test (coverage gate)
+        run: npm run test:coverage
 
       # --- 本番ビルドが通ること（起動可能性の担保 / EP-14） ---
       - name: Build
         run: npm run build
+
+      # --- 開発ツールが本番バンドルから除去されていること（B4 §11.5 / EP-12） ---
+      - name: Dev tools stripped from production
+        run: |
+          if grep -rlF 'hogoneko-devtools' dist/; then
+            echo "::error::本番バンドルに開発ツール(devtools)が混入しています（EP-12 違反）。"
+            exit 1
+          fi
+          echo "OK: 本番バンドルに devtools は含まれていません。"

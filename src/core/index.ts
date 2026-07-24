@@ -58,4 +58,4 @@ export type { GameSnapshot, SaveData, SaveMeta } from './save/SaveData';
 
 // --- Runtime（5層貫通の合成ルート / EP-14） ---
 export { GameRuntime } from './runtime/GameRuntime';
-export type { RuntimeReader, GameRuntimeDeps } from './runtime/GameRuntime';
+export type { RuntimeReader, GameRuntimeDeps, TruthReader } from './runtime/GameRuntime';
