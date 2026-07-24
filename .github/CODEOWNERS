@@ -1,0 +1,21 @@
+# CODEOWNERS — レビュー責任者（DevConst ⑫）
+# 本リポジトリへの書込権限を持つのは所有者アカウントのみ。
+# 単独所有だが、憲章 I-1 に関わる重要ファイルを明示して「どこが落とせない領域か」を可視化する。
+
+# 既定: すべて所有者がレビュー
+*                               @RyotaIguchi0915
+
+# --- 🔴 憲章 I-1 / 観測境界の中核（変更は特に慎重に）---
+/eslint.config.js               @RyotaIguchi0915
+/.github/workflows/             @RyotaIguchi0915
+/src/core/state/capability.ts   @RyotaIguchi0915
+/src/core/state/simulationAccess.ts @RyotaIguchi0915
+/src/core/state/StateStore.ts   @RyotaIguchi0915
+/src/architecture/              @RyotaIguchi0915
+
+# --- 保存の堅牢性（進行喪失は体験の全否定）---
+/src/core/save/                 @RyotaIguchi0915
+
+# --- 仕様（Source of Truth）---
+/docs/                          @RyotaIguchi0915
+/docs/adr/                      @RyotaIguchi0915
