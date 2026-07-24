@@ -33,6 +33,8 @@ export {
   type GamePhase,
 } from './state/gamePhase';
 export type { CatState } from './state/catState';
+// ⚠️ Needs/Affect/Relationship/Behavior の詳細型・initialCatState は L4 向けバレルに出さない。
+//    L2 Simulation は '@core/state/catState' を直接参照する（憲章 I-1・値を L4 に露出しない）。
 
 // --- Save（B4 ⑨ / EP-08） ---
 // ⚠️ storage の具体（localStorage 等）は L4 が実装し、注入する。

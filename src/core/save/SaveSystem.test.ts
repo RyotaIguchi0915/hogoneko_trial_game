@@ -3,6 +3,7 @@ import { createEventBus } from '../events/EventBus';
 import { SaveSystem, SaveEvents } from './SaveSystem';
 import { createMemorySaveStorage, type SaveStorage } from './SaveStorage';
 import type { GameSnapshot } from './SaveData';
+import { initialCatState } from '../state/catState';
 
 const SLOT = 'slot';
 const BACKUP = 'slot.bak';
@@ -12,7 +13,7 @@ function snap(day: number, arrived = false): GameSnapshot {
     determinism: { seed: 7, streamState: 7 + day },
     progress: { day, segment: 0, phase: 'running' },
     gamePhase: 'playing',
-    simulation: { cat: { arrived } },
+    simulation: { cat: { ...initialCatState(), arrived } },
   };
 }
 

@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { createTruthInspector } from './TruthInspector';
 import type { TruthReader } from '@core/index';
+import { initialCatState } from '@core/state/catState';
 
+const cat = { ...initialCatState(), arrived: true };
 const fakeReader: TruthReader = {
   getGamePhase: () => 'playing',
   getProgress: () => ({ day: 2, segment: 1, phase: 'running' }),
-  getCatState: () => ({ arrived: true }),
+  getCatState: () => cat,
   getRngState: () => 999,
 };
 
@@ -15,7 +17,7 @@ describe('TruthInspector（EP-12・開発ビルド限定・読取専用）', () 
     expect(inspector.snapshot()).toEqual({
       gamePhase: 'playing',
       progress: { day: 2, segment: 1, phase: 'running' },
-      cat: { arrived: true },
+      cat,
       rngState: 999,
     });
   });

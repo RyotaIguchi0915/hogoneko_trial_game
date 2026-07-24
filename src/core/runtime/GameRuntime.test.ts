@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GameRuntime } from './GameRuntime';
 import { createMemorySaveStorage } from '../save/SaveStorage';
+import { initialCatState } from '../state/catState';
 
 const clock = () => 1000;
 
@@ -66,7 +67,7 @@ describe('GameRuntime — createTruthReader（EP-12 dev 支援・読取専用）
     const reader = rt.createTruthReader();
     expect(reader.getGamePhase()).toBe('booting');
     expect(reader.getProgress()).toEqual({ day: 1, segment: 0, phase: 'running' });
-    expect(reader.getCatState()).toEqual({ arrived: false });
+    expect(reader.getCatState()).toEqual(initialCatState());
     expect(typeof reader.getRngState()).toBe('number');
     rt.dispose();
   });
