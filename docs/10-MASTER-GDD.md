@@ -16,7 +16,7 @@
 |---|---|---|---|
 | B0 | Project Constitution | ✅ [00](./00-PROJECT-CONSTITUTION.md) | 統合 |
 | B1 | Game Design Pillars & Experience Bible | ✅ [01](./01-EXPERIENCE-BIBLE.md) | 統合 |
-| **B2** | **Core Gameplay Loop Bible** | ❌ **未作成** | **要確認事項として明示（§15）** |
+| **B2** | **Core Gameplay Loop Bible** | ✅ [13](./13-CORE-GAMEPLAY-LOOP-BIBLE.md)（**Accepted**） | 統合・正式化（OI-1 解消。Segment=6/行動枠=2 は 2026-07-24 確定） |
 | B3 | Player Flow Bible | ✅ [02](./02-PLAYER-FLOW.md) | 統合 |
 | B4 | Game Systems Architecture | ✅ [03](./03-SYSTEM-ARCHITECTURE.md) | 統合 |
 | B5 | Simulation Rules Bible | ✅ [04](./04-SIMULATION-RULES.md) | 統合 |
@@ -25,7 +25,7 @@
 | B8 | Event System Bible | ✅ [07](./07-EVENT-SYSTEM.md) | 統合 |
 | B9 | Game Economy & Progression Bible | ✅ [08](./08-PROGRESSION-ECONOMY-BALANCE.md) | 統合 |
 | B10 | Room & Environment System Bible | ✅ [09](./09-ROOM-ENVIRONMENT-SYSTEM.md) | 統合 |
-| **B11** | **Data Architecture & Content Schema Bible** | ❌ **未作成** | **要確認事項として明示（§15）** |
+| **B11** | **Data Architecture & Content Schema Bible** | ✅ [14](./14-DATA-ARCHITECTURE-BIBLE.md)（Proposed） | 統合＋横断規約定義（OI-2 解消。現象語彙・実データは Content 工程） |
 
 > **B2 と B11 の内容の一部は、他文書に分散して存在する**（§15 に所在を明記）。
 > しかし正式な統合文書としては存在しない。これは開発着手前に解消すべき最大の負債である。
@@ -886,8 +886,8 @@ graph LR
 
 | ID | 種別 | 内容 | 現状の所在 |
 |---|---|---|---|
-| **OI-1** | **要作成** | **Core Gameplay Loop Bible が未作成** | 内容は B0 §3.3 / B3 / B5 §1 に分散。9回参照されたが正式文書なし |
-| **OI-2** | **要作成** | **Data Architecture & Content Schema Bible が未作成** | データ定義が B4/B8/B10 に分散。ID規則・JSONスキーマ・命名規則が横断未定義 |
+| ~~**OI-1**~~ | ✅ **解消** | **Core Gameplay Loop Bible を作成**（[13](./13-CORE-GAMEPLAY-LOOP-BIBLE.md)・Proposed） | B0 §3.3 / B3 / B5 §1 / B9 §3 を統合・正式化。Segment=6/行動枠=2 の確定昇格は人間承認待ち |
+| ~~**OI-2**~~ | ✅ **解消** | **Data Architecture Bible を作成**（[14](./14-DATA-ARCHITECTURE-BIBLE.md)・Proposed） | ID規則・JSON形式・ローカライズ規則・現象語彙スキーマを定義し EP-09 実装と整合。実データ（現象語彙リスト等）は Content 工程 |
 
 ### OI-1 の詳細
 
