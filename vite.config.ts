@@ -30,6 +30,19 @@ export default defineConfig({
       reporter: ['text', 'html'],
       // L0〜L3（純粋ロジック）を重点計測。L4 の描画は Play Test 側（DevConst ⑩）。
       include: ['src/core/**', 'src/simulation/**', 'src/perception/**', 'src/data/**'],
+      exclude: [
+        '**/*.test.{ts,tsx}',
+        '**/index.ts', // バレル（再輸出のみ・ロジックを持たない）
+        'src/devtools/**', // 開発ビルド限定・本番除外（EP-12）
+      ],
+      // 回帰防止の floor（DevConst ⑩ / EP-11）。現状 94/87/95/94 に対し余裕を持たせる。
+      // 下回ると test:coverage が失敗し、CI ゲートで止まる。
+      thresholds: {
+        statements: 88,
+        branches: 80,
+        functions: 88,
+        lines: 88,
+      },
     },
   },
 });

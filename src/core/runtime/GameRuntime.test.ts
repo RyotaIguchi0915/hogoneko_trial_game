@@ -59,3 +59,15 @@ describe('GameRuntime — 保存 → 再起動で復元（EP-14 リロード復�
     rt2.dispose();
   });
 });
+
+describe('GameRuntime — createTruthReader（EP-12 dev 支援・読取専用）', () => {
+  it('真実（Cat State・進行・RNG位置）を読み取れる', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    const reader = rt.createTruthReader();
+    expect(reader.getGamePhase()).toBe('booting');
+    expect(reader.getProgress()).toEqual({ day: 1, segment: 0, phase: 'running' });
+    expect(reader.getCatState()).toEqual({ arrived: false });
+    expect(typeof reader.getRngState()).toBe('number');
+    rt.dispose();
+  });
+});

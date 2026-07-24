@@ -9,7 +9,7 @@ import {
   type TrialConfig,
 } from '../time/TimeState';
 import { StateStore } from '../state/StateStore';
-import { initialCatState } from '../state/catState';
+import { initialCatState, type CatState } from '../state/catState';
 import type { GamePhase } from '../state/gamePhase';
 import { getSimulationStateAccess, type SimulationStateAccess } from '../state/simulationAccess';
 import { SaveSystem, type Clock, type RestoreStatus, type SaveResult } from '../save/SaveSystem';
@@ -33,6 +33,18 @@ export interface RuntimeReader {
   getProgress(): TimeState;
   /** 起動時の復元経路（診断・静かな通知用）。 */
   getRestoreStatus(): RestoreStatus;
+}
+
+/**
+ * 真実（Cat State を含む）の読み取り専用インターフェース。
+ * ⚠️ 開発ビルド限定のデバッグ経路（B4 §11.5 / EP-12）でのみ使う。
+ *    本番では main.tsx の import.meta.env.DEV ガードにより、これを使う経路ごと除去される。
+ */
+export interface TruthReader {
+  getGamePhase(): GamePhase;
+  getProgress(): TimeState;
+  getCatState(): Readonly<CatState>;
+  getRngState(): number;
 }
 
 export interface GameRuntimeDeps {
@@ -103,6 +115,20 @@ export class GameRuntime {
       getGamePhase: () => this.#store.getGamePhase(),
       getProgress: () => this.#time.now(),
       getRestoreStatus: () => this.#restoreStatus,
+    };
+  }
+
+  /**
+   * 真実（Cat State を含む）の読み取り専用リーダを返す（B4 §11.5 / EP-12）。
+   * ⚠️ 開発ビルド限定のデバッグ経路からのみ使う。読み取り専用で状態を変更しない。
+   *    本番では呼び出し側（main.tsx）の DEV ガードにより経路ごと除去される。
+   */
+  createTruthReader(): TruthReader {
+    return {
+      getGamePhase: () => this.#store.getGamePhase(),
+      getProgress: () => this.#time.now(),
+      getCatState: () => this.#catAccess.getCatState(),
+      getRngState: () => this.#rng.state,
     };
   }
 
