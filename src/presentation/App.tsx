@@ -1,3 +1,5 @@
+import type { RestoreStatus, TrialPhase } from '@core/index';
+
 /**
  * App — L4 Presentation のルート（EP-14 骨格）。
  *
@@ -5,8 +7,31 @@
  * ゲームプレイ（タイトル・部屋・猫）は Sprint 2 以降。
  *
  * トーン方針（Pillar 6 / 憲章§9.6）に従い、派手な要素を持たない。
+ * ⚠️ この層は Cat State（真実）を受け取らない。表示するのは全体進行のみ（憲章 I-1）。
  */
-export function App() {
+export interface AppView {
+  readonly restoreStatus: RestoreStatus;
+  readonly day: number;
+  readonly segment: number;
+  readonly segmentsPerDay: number;
+  readonly phase: TrialPhase;
+}
+
+/** 復元経路の静かな言い換え（憲章§10.2・§11.4 の語彙）。 */
+function restoreNote(status: RestoreStatus): string {
+  switch (status) {
+    case 'ok':
+      return '前回の続きから';
+    case 'recovered':
+      return '記録の一部を読み直しました';
+    case 'empty':
+      return 'はじめから';
+    case 'unrecoverable':
+      return 'うまく読み込めませんでした';
+  }
+}
+
+export function App({ view }: { view: AppView }) {
   return (
     <main
       style={{
@@ -17,7 +42,19 @@ export function App() {
         fontFamily: 'system-ui, sans-serif',
       }}
     >
-      <p aria-label="準備中">…</p>
+      <div style={{ textAlign: 'center', lineHeight: 2 }}>
+        <p aria-label="準備中" style={{ fontSize: '1.5rem', margin: 0 }}>
+          …
+        </p>
+        <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: 0 }}>
+          {view.phase === 'ended'
+            ? `${view.day}日目・おわり`
+            : `${view.day}日目 ・ ${view.segment + 1}/${view.segmentsPerDay}`}
+        </p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, margin: 0 }}>
+          {restoreNote(view.restoreStatus)}
+        </p>
+      </div>
     </main>
   );
 }

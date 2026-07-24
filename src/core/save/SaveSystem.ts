@@ -40,14 +40,18 @@ export const SaveEvents = {
 } as const;
 
 export type SaveResult =
-  | { readonly ok: true; readonly savedAt: number }
-  | { readonly ok: false; readonly reason: string };
+  { readonly ok: true; readonly savedAt: number } | { readonly ok: false; readonly reason: string };
 
 export type RestoreStatus = 'ok' | 'empty' | 'recovered' | 'unrecoverable';
 
 export type RestoreResult =
   | { readonly status: 'ok'; readonly snapshot: GameSnapshot; readonly savedAt: number }
-  | { readonly status: 'recovered'; readonly snapshot: GameSnapshot; readonly savedAt: number; readonly reason: string }
+  | {
+      readonly status: 'recovered';
+      readonly snapshot: GameSnapshot;
+      readonly savedAt: number;
+      readonly reason: string;
+    }
   | { readonly status: 'empty' }
   | { readonly status: 'unrecoverable'; readonly reason: string };
 
@@ -116,7 +120,11 @@ export class SaveSystem implements GameModule {
 
     const decodedMain = this.#decode(main);
     if (decodedMain.ok) {
-      return { status: 'ok', snapshot: decodedMain.save.data, savedAt: decodedMain.save.meta.savedAt };
+      return {
+        status: 'ok',
+        snapshot: decodedMain.save.data,
+        savedAt: decodedMain.save.meta.savedAt,
+      };
     }
 
     // メインが読めない → バックアップへ縮退（B4 §11.3）。

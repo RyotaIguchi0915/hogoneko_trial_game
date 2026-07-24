@@ -1,0 +1,57 @@
+name: CI
+
+# 全 PR / main への push を検証ゲート G0 に通す（DevConst ⑧⑩ / B4 §14.2）。
+# ここで落ちるものはマージできない。品質を「レビュー依存」ではなく「構造」で守る。
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同一 PR の連続 push では古い実行を打ち切る（無駄な CI を避ける）。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck / Lint / Test / Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install (clean, lockfile 固定)
+        run: npm ci
+
+      # --- 型検証（層境界を静的に強制する型システム / EP-10） ---
+      - name: Typecheck
+        run: npm run typecheck
+
+      # --- 依存グラフ・境界・禁止語彙・決定論性・循環依存・デバッグコードの機械的検証 ---
+      #   ・import/no-restricted-paths … L4→L2 等の層境界（憲章 I-1 / DR-2/3/4）
+      #   ・id-denylist               … 禁止語彙（好感度/懐き度 相当・B0 §10.2）
+      #   ・no-restricted-properties  … Math.random / Date.now（決定論性 G-3）
+      #   ・import/no-cycle           … 循環依存
+      #   ・no-debugger / no-console  … デバッグコード（L0〜L3）
+      - name: Lint (境界・禁止語・決定論・循環・デバッグ)
+        run: npm run lint
+
+      # --- フォーマット逸脱の検出（DevConst ⑤） ---
+      - name: Format check
+        run: npm run format:check
+
+      # --- テスト（Unit/Integration/再現性/セーブ往復 / B4 §14.2） ---
+      - name: Test
+        run: npm test
+
+      # --- 本番ビルドが通ること（起動可能性の担保 / EP-14） ---
+      - name: Build
+        run: npm run build
