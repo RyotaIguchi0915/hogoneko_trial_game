@@ -16,8 +16,7 @@ export interface ContentDefinition {
 }
 
 export type Validated<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly message: string };
+  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly message: string };
 
 /**
  * 種別ごとの検証器。raw（JSON.parse 直後の unknown）を検証し、
@@ -54,7 +53,8 @@ export const field = {
   },
   number(rec: Record<string, unknown>, key: string): number {
     const v = rec[key];
-    if (typeof v !== 'number' || Number.isNaN(v)) throw new SchemaError(`"${key}" must be a number`);
+    if (typeof v !== 'number' || Number.isNaN(v))
+      throw new SchemaError(`"${key}" must be a number`);
     return v;
   },
   boolean(rec: Record<string, unknown>, key: string): boolean {
