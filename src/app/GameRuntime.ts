@@ -23,7 +23,8 @@ import {
 } from '@core/index';
 import { initialCatState } from '@core/state/catState';
 import { getSimulationStateAccess, type SimulationStateAccess } from '@core/state/simulationAccess';
-import { SimulationSystem } from '@simulation/index';
+import { SimulationSystem, type EnvironmentSystem } from '@simulation/index';
+import { buildDefaultEnvironment } from './environment';
 
 /**
  * Game Runtime — 5層貫通の合成ルート（合成層 src/app / EP-14・EP-2.05）
@@ -63,6 +64,7 @@ export class GameRuntime {
   readonly #store: StateStore;
   readonly #catAccess: SimulationStateAccess;
   readonly #sim: SimulationSystem;
+  readonly #env: EnvironmentSystem;
   readonly #save: SaveSystem;
   #rng: Rng;
   #seed: number;
@@ -95,6 +97,7 @@ export class GameRuntime {
 
     this.#catAccess = getSimulationStateAccess(this.#store);
     this.#sim = new SimulationSystem(this.#store);
+    this.#env = buildDefaultEnvironment();
 
     this.#manager = new GameManager();
     this.#manager.register(this.#time).register(this.#save);
@@ -151,6 +154,7 @@ export class GameRuntime {
         day: state.day,
         segment: state.segment,
         inRoom: isInRoomSegment(state.segment),
+        environment: this.#env.defaultEnvironment(),
       });
     }
     return state;
