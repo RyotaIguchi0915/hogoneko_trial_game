@@ -60,7 +60,7 @@ npm run build    # 本番ビルドが通ること
 - **`main` に直接コミットしない。** 必ず作業ブランチを切る（例: `feat/...`, `fix/...`）。
 - コミットは小さく、意図が分かる粒度で。プレフィックス例: `feat` / `fix` / `docs` / `test` / `chore`。
 - PR を出すと `.github/pull_request_template.md` の **Self Review + Development Checklist** が自動で現れる。
-  **Self Review 欄を記入していない PR は CI（PR ガバナンス）で通らない。**
+  Self Review 欄は自己点検用。記入を推奨する（マージの強制ゲートにはしない）。
 - レビュー責任者は `.github/CODEOWNERS` が自動割当。憲章 I-1 の境界ファイルは特に慎重に。
 - CI（typecheck / lint / format:check / test / build）が緑になってからマージする。
 

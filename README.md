@@ -94,4 +94,4 @@ npm run dev      # 開発サーバ
 | [.github/CODEOWNERS](.github/CODEOWNERS) | レビュー責任者（憲章 I-1 境界ファイルを明示） |
 | [docs/adr/](docs/adr/) | ADR（運用は [README](docs/adr/README.md)・雛形は [TEMPLATE](docs/adr/TEMPLATE.md)） |
 
-CI（`.github/workflows/`）: `ci.yml`（typecheck/lint/format/test/build）と `pr-governance.yml`（Self Review 記入チェック）。
+CI（`.github/workflows/`）: `ci.yml`（typecheck / lint / format / coverage / build / devtools 除去検証）。
