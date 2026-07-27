@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createEventBus } from '../events/EventBus';
 import { SaveSystem, SaveEvents } from './SaveSystem';
 import { createMemorySaveStorage, type SaveStorage } from './SaveStorage';
-import type { GameSnapshot } from './SaveData';
+import { computeChecksum, type GameSnapshot } from './SaveData';
 import { initialCatState } from '../state/catState';
 
 const SLOT = 'slot';
@@ -51,6 +51,79 @@ describe('SaveSystem — 空スロット', () => {
   it('保存が無ければ empty を返す', () => {
     const { system } = makeSystem(createMemorySaveStorage());
     expect(system.read()).toEqual({ status: 'empty' });
+  });
+});
+
+describe('SaveSystem — 実データ往復（観察履歴・痕跡込み・EP-2.11）', () => {
+  it('Persisted 全項目（cat/観察履歴/痕跡）が往復で一致する', () => {
+    const storage = createMemorySaveStorage();
+    const { system } = makeSystem(storage, 4242);
+    const rich: GameSnapshot = {
+      determinism: { seed: 3, streamState: 12 },
+      progress: { day: 4, segment: 3, phase: 'running' },
+      gamePhase: 'playing',
+      simulation: { cat: { ...initialCatState(), arrived: true } },
+      observationLog: [
+        { day: 1, segment: 1, subject: 'cat', descriptor: 'phenomenon.curled_resting' },
+        { day: 1, segment: 3, subject: 'trace', descriptor: 'phenomenon.shed_fur' },
+      ],
+      traces: [{ kind: 'moved_object' }],
+    };
+    expect(system.write(rich).ok).toBe(true);
+    const restored = system.read();
+    expect(restored.status).toBe('ok');
+    if (restored.status === 'ok') expect(restored.snapshot).toEqual(rich);
+  });
+});
+
+describe('SaveSystem — v1 セーブの移行復元（Sprint1→2・EP-2.11）', () => {
+  it('checksum は原本で検証してから移行し、全形 cat で復元する', () => {
+    const storage = createMemorySaveStorage();
+    const { system } = makeSystem(storage);
+    // 正しいチェックサムを持つ v1 セーブ（Sprint1 骨格 cat）を仕込む。
+    const v1data = {
+      determinism: { seed: 1, streamState: 1 },
+      progress: { day: 3, segment: 1, phase: 'running' },
+      gamePhase: 'playing',
+      simulation: { cat: { arrived: true } },
+    };
+    const v1 = {
+      meta: {
+        schemaVersion: 1,
+        savedAt: 100,
+        checksum: computeChecksum(v1data as unknown as GameSnapshot),
+        buildVersion: 'old',
+      },
+      data: v1data,
+    };
+    storage.write(SLOT, JSON.stringify(v1));
+
+    const restored = system.read();
+    expect(restored.status).toBe('ok'); // 移行して復元できる（拒否ではない）
+    if (restored.status === 'ok') {
+      expect(restored.snapshot.simulation.cat.arrived).toBe(true); // 保全
+      expect(typeof restored.snapshot.simulation.cat.needs.hunger).toBe('number'); // 補完
+      expect(restored.snapshot.progress.day).toBe(3);
+      expect(restored.snapshot.observationLog).toEqual([]);
+      expect(restored.snapshot.traces).toEqual([]);
+    }
+  });
+
+  it('v1 セーブでも改竄（checksum 不一致）は移行前に検出して拒否する', () => {
+    const storage = createMemorySaveStorage();
+    const { system } = makeSystem(storage);
+    const v1data = {
+      determinism: { seed: 1, streamState: 1 },
+      progress: { day: 3, segment: 1, phase: 'running' },
+      gamePhase: 'playing',
+      simulation: { cat: { arrived: true } },
+    };
+    const v1 = {
+      meta: { schemaVersion: 1, savedAt: 100, checksum: 'deadbeef', buildVersion: 'old' }, // 不正
+      data: v1data,
+    };
+    storage.write(SLOT, JSON.stringify(v1));
+    expect(system.read().status).toBe('unrecoverable');
   });
 });
 

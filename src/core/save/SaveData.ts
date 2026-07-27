@@ -1,6 +1,7 @@
 import type { TrialPhase } from '../time/TimeState';
 import type { GamePhase } from '../state/gamePhase';
 import type { CatState } from '../state/catState';
+import { initialCatState } from '../state/catState';
 import type { ObservationEntry } from '../state/observation';
 import type { Trace } from '../state/trace';
 
@@ -21,8 +22,11 @@ import type { Trace } from '../state/trace';
  *   Sprint 2 以降に GameSnapshot を拡張して充填する（フィールド追加は 9.6 マイグレーションで吸収）。
  */
 
-/** 現在のスキーマ版。破壊的変更のたびに +1 し、旧版へのマイグレーションを追加する。 */
-export const CURRENT_SCHEMA_VERSION = 1;
+/**
+ * 現在のスキーマ版。破壊的変更のたびに +1 し、旧版へのマイグレーションを追加する。
+ * v1 = Sprint1 骨格（cat={arrived} のみ）。v2 = Sprint2（Cat State 全形 + 観察履歴 + 痕跡）。
+ */
+export const CURRENT_SCHEMA_VERSION = 2;
 
 /**
  * 保存する元データ（Persisted / B4 §9.2）。
@@ -239,16 +243,62 @@ export function verifyChecksum(save: SaveData): boolean {
 
 // --- マイグレーション（B4 §9.6） ---
 
+/** 与えられたオブジェクトが指定キーをすべて number として持つか（マイグレーションの保全判定）。 */
+function hasNums(o: unknown, keys: readonly string[]): boolean {
+  return (
+    typeof o === 'object' &&
+    o !== null &&
+    keys.every((k) => typeof (o as Record<string, unknown>)[k] === 'number')
+  );
+}
+
 /**
  * 旧スキーマ版 → 次版への変換関数。キーは「変換元の版」。
  * ⚠️ マイグレーションは一方向のみ（B4 §9.6）。ダウングレードは提供しない。
- *
- * Sprint 1 時点では過去版が無いため空。スキーマを +1 するたびに、
- * 「その一つ前の版 → 新版」への関数を必ず追加する（AA-77 の防止）。
+ * ⚠️ スキーマを +1 するたびに「その一つ前の版 → 新版」への関数を必ず追加する（AA-77 の防止）。
  */
 export const MIGRATIONS: Readonly<
   Record<number, (raw: Record<string, unknown>) => Record<string, unknown>>
-> = {};
+> = {
+  /**
+   * v1 → v2: Cat State を全形へ、観察履歴・痕跡フィールドを補完する（B4 §9.6）。
+   * ⚠️ 既に妥当な値（Sprint2 で v1 として書かれた実データ）は**保全**する（既定値で上書きしない＝データ喪失防止）。
+   *    欠落・不正な部分だけ初期値で補う。
+   */
+  1: (raw) => {
+    const data = (raw.data ?? {}) as Record<string, unknown>;
+    const sim = (data.simulation ?? {}) as Record<string, unknown>;
+    const oldCat = (sim.cat ?? {}) as Record<string, unknown>;
+    const base = initialCatState();
+    const cat: CatState = {
+      arrived: typeof oldCat.arrived === 'boolean' ? oldCat.arrived : base.arrived,
+      needs: hasNums(oldCat.needs, ['safety', 'hunger', 'elimination'])
+        ? (oldCat.needs as CatState['needs'])
+        : base.needs,
+      affect: hasNums(oldCat.affect, ['arousal', 'valence', 'vigilance', 'stressLoad'])
+        ? (oldCat.affect as CatState['affect'])
+        : base.affect,
+      relationship: hasNums(oldCat.relationship, ['trust', 'familiarity'])
+        ? (oldCat.relationship as CatState['relationship'])
+        : base.relationship,
+      behavior:
+        typeof oldCat.behavior === 'string'
+          ? (oldCat.behavior as CatState['behavior'])
+          : base.behavior,
+    };
+    const meta = (raw.meta ?? {}) as Record<string, unknown>;
+    return {
+      ...raw,
+      meta: { ...meta, schemaVersion: 2 },
+      data: {
+        ...data,
+        simulation: { cat },
+        observationLog: Array.isArray(data.observationLog) ? data.observationLog : [],
+        traces: Array.isArray(data.traces) ? data.traces : [],
+      },
+    };
+  },
+};
 
 export type MigrationResult =
   | { readonly ok: true; readonly value: Record<string, unknown> }
