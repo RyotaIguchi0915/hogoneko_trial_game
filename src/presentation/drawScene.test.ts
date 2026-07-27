@@ -27,6 +27,7 @@ function stubCtx(): Scene2D & { calls: Record<string, number> } {
     stroke: rec('stroke'),
     ellipse: rec('ellipse'),
     fill: rec('fill'),
+    drawImage: rec('drawImage'),
     fillText: vi.fn(),
   } as unknown as Scene2D & { calls: Record<string, number> };
 }
@@ -53,10 +54,19 @@ describe('drawScene（EP-2.10 Canvas 基盤）', () => {
     expect(ctx.fillText).toHaveBeenCalledWith('丸くなって休んでいる', 160, expect.any(Number));
   });
 
-  it('観察可能なとき猫（プレースホルダ）を描く', () => {
+  it('観察可能でスプライト無しなら楕円プレースホルダを描く', () => {
     const ctx = stubCtx();
     drawScene(ctx, view({ observations: ['丸くなって休んでいる'] }), 320, 220);
     expect(ctx.calls.ellipse).toBeGreaterThan(0);
+    expect(ctx.calls.drawImage ?? 0).toBe(0);
+  });
+
+  it('観察可能でスプライトがあれば画像を描く（EP-2.10 サンプル絵）', () => {
+    const ctx = stubCtx();
+    const fakeSprite = {} as unknown as CanvasImageSource;
+    drawScene(ctx, view({ observations: ['丸くなって休んでいる'] }), 320, 220, { cat: fakeSprite });
+    expect(ctx.calls.drawImage).toBeGreaterThan(0);
+    expect(ctx.calls.ellipse ?? 0).toBe(0); // 画像があれば楕円は描かない
   });
 
   it('「姿が見当たらない」ときは猫を描かない（隠れている）', () => {
