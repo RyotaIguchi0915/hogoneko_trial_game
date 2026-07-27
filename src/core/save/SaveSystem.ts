@@ -173,7 +173,14 @@ export class SaveSystem implements GameModule {
       return { ok: false, reason: 'missing schema version' };
     }
 
-    // マイグレーション（B4 §9.6）。
+    // チェックサムは「保存された原本」に対して検証する（改竄・破損検出・B4 §9.5）。
+    // ⚠️ マイグレーション前に検証する。移行はデータを書き換えるため、移行後に検証すると必ず不一致になる。
+    //    移行結果は原本を信頼した派生なので再計算・再検証しない。
+    if (!verifyChecksum(root as unknown as SaveData)) {
+      return { ok: false, reason: 'checksum mismatch' };
+    }
+
+    // マイグレーション（B4 §9.6）。原本検証の後に行う。
     if (version !== CURRENT_SCHEMA_VERSION) {
       const migrated = migrate(root, version);
       if (!migrated.ok) {
@@ -182,16 +189,12 @@ export class SaveSystem implements GameModule {
       parsed = migrated.value;
     }
 
+    // 構造・値域の検証は「最終形（移行後）」に対して行う（B4 §9.5）。
     const structure = validateStructure(parsed);
     if (!structure.valid) {
       return { ok: false, reason: `structure invalid: ${structure.errors.join('; ')}` };
     }
 
-    const save = parsed as SaveData;
-    if (!verifyChecksum(save)) {
-      return { ok: false, reason: 'checksum mismatch' };
-    }
-
-    return { ok: true, save };
+    return { ok: true, save: parsed as SaveData };
   }
 }

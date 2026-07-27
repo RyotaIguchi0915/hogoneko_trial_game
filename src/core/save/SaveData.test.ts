@@ -173,3 +173,54 @@ describe('SaveData — migrate', () => {
     if (!result.ok) expect(result.reason).toMatch(/no migration/);
   });
 });
+
+describe('SaveData — migrate v1→v2（Sprint1→2 スキーマ移行・EP-2.11）', () => {
+  it('Sprint1 の最小 cat（arrived のみ）を全形へ補完し、観察履歴・痕跡を足す', () => {
+    const v1 = {
+      meta: { schemaVersion: 1, checksum: 'x', savedAt: 1, buildVersion: 'x' },
+      data: {
+        determinism: { seed: 1, streamState: 1 },
+        progress: { day: 2, segment: 1, phase: 'running' },
+        gamePhase: 'playing',
+        simulation: { cat: { arrived: true } }, // Sprint1 骨格
+      },
+    } as Record<string, unknown>;
+
+    const result = migrate(v1, 1);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // 移行後は現行スキーマとして構造検証を通る（全形 cat + 配列フィールド）。
+    expect(validateStructure(result.value).valid).toBe(true);
+    const data = result.value.data as Record<string, any>;
+    expect(data.simulation.cat.arrived).toBe(true); // 保全
+    expect(typeof data.simulation.cat.needs.hunger).toBe('number'); // 補完
+    expect(data.observationLog).toEqual([]);
+    expect(data.traces).toEqual([]);
+    expect((result.value.meta as Record<string, unknown>).schemaVersion).toBe(2);
+    // 進行など他の元データは保全される。
+    expect(data.progress).toEqual({ day: 2, segment: 1, phase: 'running' });
+  });
+
+  it('既に妥当な値（Sprint2 を v1 として保存した実データ）は初期値で上書きしない（データ喪失防止）', () => {
+    const cat = { ...initialCatState(), relationship: { trust: 0.42, familiarity: 0.37 } };
+    const v1 = {
+      meta: { schemaVersion: 1, checksum: 'x', savedAt: 1, buildVersion: 'x' },
+      data: {
+        determinism: { seed: 9, streamState: 3 },
+        progress: { day: 5, segment: 3, phase: 'running' },
+        gamePhase: 'playing',
+        simulation: { cat },
+        observationLog: [{ day: 1, segment: 1, subject: 'cat', descriptor: 'x' }],
+        traces: [{ kind: 'shed_fur' }],
+      },
+    } as Record<string, unknown>;
+
+    const result = migrate(v1, 1);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const data = result.value.data as Record<string, any>;
+    expect(data.simulation.cat.relationship).toEqual({ trust: 0.42, familiarity: 0.37 }); // 保全
+    expect(data.observationLog).toHaveLength(1); // 保全
+    expect(data.traces).toEqual([{ kind: 'shed_fur' }]); // 保全
+  });
+});

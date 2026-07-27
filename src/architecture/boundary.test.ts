@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { ESLint } from 'eslint';
+import * as ts from 'typescript';
 
 /**
  * 境界違反テストスイート（EP-10 / B4 §0・⑦・憲章 I-1）
@@ -104,5 +105,58 @@ describe('境界・規約の機械的強制（EP-10）', () => {
       .flatMap((r) => r.messages)
       .filter((m) => m.ruleId === 'import/no-restricted-paths');
     expect(restricted).toHaveLength(0);
+  });
+});
+
+/**
+ * Phenomenon 数値禁止（観測境界の型ガード・B4 P-01 / EP-10 / EP-2.11）。
+ *
+ * Phenomenon.ts は NumericFieldKeys<T> ガードで「数値フィールドを持つとコンパイルが落ちる」ことを保証する。
+ * ここではそのガード機構を TypeScript コンパイラ API で type-check し、
+ * 「数値フィールドありは型エラー / なしはエラーなし」を CI が毎回検証する（規律ではなく構造で守る）。
+ */
+function typeCheckErrors(code: string): readonly string[] {
+  const fileName = 'phenomenon-guard-check.ts';
+  const source = ts.createSourceFile(fileName, code, ts.ScriptTarget.ES2022, true);
+  const host: ts.CompilerHost = {
+    getSourceFile: (name) => (name === fileName ? source : undefined),
+    getDefaultLibFileName: () => 'lib.d.ts',
+    writeFile: () => undefined,
+    getCurrentDirectory: () => '',
+    getDirectories: () => [],
+    getCanonicalFileName: (f) => f,
+    useCaseSensitiveFileNames: () => true,
+    getNewLine: () => '\n',
+    fileExists: (name) => name === fileName,
+    readFile: () => undefined,
+  };
+  const program = ts.createProgram([fileName], { noEmit: true, noLib: true, strict: true }, host);
+  return ts
+    .getPreEmitDiagnostics(program)
+    .filter((d) => d.file?.fileName === fileName)
+    .map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'));
+}
+
+// Phenomenon.ts と同じガード（数値フィールドがあれば never でなくなり never 代入で落ちる）。
+const GUARD =
+  'type NumericFieldKeys<T> = { readonly [K in keyof T]-?: T[K] extends number ? K : never }[keyof T];\n';
+
+describe('Phenomenon 数値禁止（型ガード・EP-2.11）', () => {
+  it('数値フィールドを持つ Phenomenon 相当型はコンパイルで落ちる', () => {
+    const bad =
+      GUARD +
+      'interface P { readonly descriptor: string; readonly value: number; }\n' +
+      'const _assert: NumericFieldKeys<P> extends never ? true : never = true;\n' +
+      'export { _assert };\n';
+    expect(typeCheckErrors(bad).length).toBeGreaterThan(0);
+  });
+
+  it('数値フィールドを持たない Phenomenon 相当型は型エラーにならない', () => {
+    const clean =
+      GUARD +
+      'interface P { readonly descriptor: string; readonly observability: boolean; }\n' +
+      'const _assert: NumericFieldKeys<P> extends never ? true : never = true;\n' +
+      'export { _assert };\n';
+    expect(typeCheckErrors(clean)).toEqual([]);
   });
 });
