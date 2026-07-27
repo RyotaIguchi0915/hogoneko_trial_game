@@ -19,7 +19,7 @@ describe('EP-14 Bootstrap smoke（localStorage + DOM）', () => {
     cleanup();
   });
 
-  it('初回起動は「はじめから」で、空のシーン（…）を描画する', () => {
+  it('初回起動: 観察テキストが描画され、「はじめから」・進行が出る（EP-2.10）', () => {
     const { view } = bootstrap({
       storage: createLocalStorageSaveStorage(),
       clock: fixedClock,
@@ -27,10 +27,29 @@ describe('EP-14 Bootstrap smoke（localStorage + DOM）', () => {
     });
 
     render(<App view={view} />);
-    expect(screen.getByLabelText('準備中').textContent).toBe('…');
+    // 観測された猫の様子が表示される（初期 behavior=hiding → out_of_sight → 「姿が見当たらない」）
+    expect(view.observations.length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('観察')).toBeInTheDocument();
+    expect(screen.getByText('姿が見当たらない')).toBeInTheDocument();
     expect(screen.getByText('はじめから')).toBeInTheDocument();
     // 起動時に 1 Segment 前進している（初期 seg0 → seg1 → 表示 "2/6"）
     expect(screen.getByText(/1日目 ・ 2\/6/)).toBeInTheDocument();
+  });
+
+  it('観察が無いときは … を出す（App フォールバック）', () => {
+    render(
+      <App
+        view={{
+          restoreStatus: 'empty',
+          day: 1,
+          segment: 0,
+          segmentsPerDay: 6,
+          phase: 'running',
+          observations: [],
+        }}
+      />,
+    );
+    expect(screen.getByLabelText('準備中').textContent).toBe('…');
   });
 
   it('リロード（同一 localStorage で再起動）すると前回の続きから継続する', () => {
