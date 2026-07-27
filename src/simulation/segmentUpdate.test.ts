@@ -78,9 +78,10 @@ describe('updateCatSegment — 順序と方向（§8.1）', () => {
     expect(secure.needs.safety).toBeLessThan(insecure.needs.safety);
   });
 
-  it('行動選択には踏み込まない（behavior は据え置き・EP-2.02 の担当）', () => {
-    const s = initialCatState();
-    expect(updateCatSegment(s, inRoomCtx).behavior).toBe(s.behavior);
+  it('Cat AI が行動を選択する（怖い初期状態→隠れる・EP-2.02 / §8.1 step14-15）', () => {
+    const s = initialCatState(); // safety 高・trust 低 → hiding
+    // behaviorRng 省略時は argmax（決定論）
+    expect(updateCatSegment(s, inRoomCtx).behavior).toBe('hiding');
   });
 });
 
