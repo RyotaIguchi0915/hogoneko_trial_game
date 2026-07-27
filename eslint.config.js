@@ -120,7 +120,15 @@ export default tseslint.config(
               from: APP_ROOT,
               message: 'src/app は合成ルート（層外）。下位層から import しない（EP-2.05）。',
             },
-            // ⚠️ L3→L2 を Perception Gateway 経由のみに限定する制約は EP-10 で追加する。
+            // 🔴 L3 Perception は L2 Simulation を参照禁止（G-2 / DR-3）。
+            // Player Knowledge は観察履歴（Phenomenon 由来）から理解を再生成し、真実には到達しない。
+            // Gateway も真実を「注入」で受け取り Simulation を import しない（越境点は Phenomenon のみ）。
+            {
+              target: L3_PERC,
+              from: L2_SIM,
+              message:
+                'L3→L2 参照は観測境界違反（G-2）。真実は合成ルートから注入され、Phenomenon のみが越境する。',
+            },
           ],
         },
       ],

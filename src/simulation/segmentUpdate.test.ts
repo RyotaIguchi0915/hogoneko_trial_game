@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { initialCatState, type CatState } from '@core/state/catState';
 import { updateCatSegment, type SegmentContext } from './segmentUpdate';
-import { effectiveUrgency, PROVISIONAL } from './catDynamics';
+import { effectiveUrgency, PROVISIONAL, applyNeedSatisfaction } from './catDynamics';
 
 const inRoomCtx: SegmentContext = { day: 1, segment: 1, inRoom: true };
 
@@ -82,6 +82,17 @@ describe('updateCatSegment — 順序と方向（§8.1）', () => {
     const s = initialCatState(); // safety 高・trust 低 → hiding
     // behaviorRng 省略時は argmax（決定論）
     expect(updateCatSegment(s, inRoomCtx).behavior).toBe('hiding');
+  });
+});
+
+describe('applyNeedSatisfaction — 行動による Need 充足（§8.1 step17）', () => {
+  it('eating で空腹が下がる', () => {
+    const needs = { safety: 0.3, hunger: 0.8, elimination: 0.2 };
+    expect(applyNeedSatisfaction(needs, 'eating').hunger).toBeLessThan(needs.hunger);
+  });
+  it('eating 以外では変えない（MVP）', () => {
+    const needs = { safety: 0.3, hunger: 0.8, elimination: 0.2 };
+    expect(applyNeedSatisfaction(needs, 'resting')).toEqual(needs);
   });
 });
 

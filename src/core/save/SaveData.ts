@@ -1,6 +1,7 @@
 import type { TrialPhase } from '../time/TimeState';
 import type { GamePhase } from '../state/gamePhase';
 import type { CatState } from '../state/catState';
+import type { ObservationEntry } from '../state/observation';
 
 /**
  * Save Data — 保存対象の分類・構造・整合性・移行（L1 Core / B4 ⑨）
@@ -48,6 +49,11 @@ export interface GameSnapshot {
   readonly simulation: {
     readonly cat: CatState;
   };
+  /**
+   * 観察履歴（B4 §9.2 Persisted「観測履歴」）。Player Knowledge の再生成元。
+   * ⚠️ 任意（後方互換）: 旧セーブには無いため absent を許容し、復元時は [] で補完する（B4 §9.6 フィールド追加）。
+   */
+  readonly observationLog?: readonly ObservationEntry[];
 }
 
 export interface SaveMeta {
@@ -207,6 +213,11 @@ export function validateStructure(value: unknown): ValidationResult {
     if (!nums(cat.relationship, ['trust', 'familiarity']))
       push('data.simulation.cat.relationship is invalid');
     if (typeof cat.behavior !== 'string') push('data.simulation.cat.behavior is invalid');
+  }
+
+  // 観察履歴は任意（旧セーブ後方互換・B4 §9.6）。存在するなら配列であること。
+  if (data.observationLog !== undefined && !Array.isArray(data.observationLog)) {
+    push('data.observationLog is invalid');
   }
 
   return { valid: errors.length === 0, errors };

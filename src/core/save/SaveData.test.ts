@@ -115,6 +115,30 @@ describe('SaveData — validateStructure', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.join()).toMatch(/cat\.needs is invalid/);
   });
+
+  it('observationLog 欠落（旧セーブ）は受理する（後方互換・B4 §9.6）', () => {
+    const save = serialize(sampleSnapshot(), 1, 'x'); // observationLog を持たない
+    expect('observationLog' in save.data).toBe(false);
+    expect(validateStructure(save).valid).toBe(true);
+  });
+
+  it('observationLog があり配列なら受理し、非配列は拒否する', () => {
+    const withLog = serialize(
+      sampleSnapshot({ observationLog: [{ day: 1, segment: 1, subject: 'cat', descriptor: 'x' }] }),
+      1,
+      'x',
+    );
+    expect(validateStructure(withLog).valid).toBe(true);
+
+    const broken = serialize(
+      sampleSnapshot({ observationLog: 'nope' as unknown as readonly [] }),
+      1,
+      'x',
+    );
+    const result = validateStructure(broken);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join()).toMatch(/observationLog is invalid/);
+  });
 });
 
 describe('SaveData — migrate', () => {

@@ -1,4 +1,4 @@
-import type { Needs, Affect, Relationship } from '@core/state/catState';
+import type { Needs, Affect, Relationship, Behavior } from '@core/state/catState';
 
 /**
  * Cat Dynamics — 猫状態の各更新ステップ（L2 Simulation / B5 ②③⑤⑥）
@@ -34,6 +34,8 @@ export const PROVISIONAL = {
   familiarityRise: 0.02,
   /** Safety 圧 = securityWeight·(1−ZoneSecurity) + vigilanceWeight·Vigilance − trustRelief·Trust。 */
   safety: { securityWeight: 0.4, vigilanceWeight: 0.6, trustRelief: 0.3 },
+  /** 行動による Need 充足（§8.1 step17）。eating で空腹が下がる。 */
+  satisfaction: { eatingHungerRelief: 0.35 },
 } as const;
 
 // --- 各ステップ（§8.1 の該当番号を付す） ---
@@ -95,6 +97,20 @@ export function updateSafety(
       vigilanceWeight * affect.vigilance -
       trustRelief * relationship.trust,
   );
+}
+
+/**
+ * §8.1 step17: 行動による Need 充足。選択された行動が満たす欲求を下げる。
+ * MVP は eating→hunger のみ（監修で拡充）。行動が Need を下げることで悪循環でない安定が生まれる。
+ */
+export function applyNeedSatisfaction(needs: Needs, behavior: Behavior): Needs {
+  if (behavior === 'eating') {
+    return {
+      ...needs,
+      hunger: clamp01(needs.hunger - PROVISIONAL.satisfaction.eatingHungerRelief),
+    };
+  }
+  return needs;
 }
 
 /**
