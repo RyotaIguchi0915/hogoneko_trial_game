@@ -31,10 +31,17 @@ import {
   SimulationSystem,
   feedCat,
   traceForBehavior,
+  dueEvents,
+  environmentEffect,
+  combineDelta,
+  clamp01,
+  type EnvironmentDelta,
   type EnvironmentSystem,
 } from '@simulation/index';
+import type { EventDef } from '@data/schemas/event';
 import { toPhenomena, tracesToPhenomena, type Phenomenon } from '@perception/index';
 import { buildDefaultEnvironment } from './environment';
+import { buildEventContent } from './events';
 
 /** 在室 Segment ごとの行動枠（B2 §4 / B9 §3.3）。観察=0/介入=有限の非対称。 */
 const SLOTS_PER_IN_ROOM_SEGMENT = 2;
@@ -107,6 +114,12 @@ export class GameRuntime {
   #pendingTraces: readonly Trace[];
   /** 現 Segment の観測スナップショット（transient・描画用。pending クリアに影響されない）。 */
   #lastObservation: readonly Phenomenon[];
+  /** 検証済みイベント定義（不変・content 由来）。 */
+  readonly #events: readonly EventDef[];
+  /** 発火済みイベントID（Persisted・一度だけ発火・EP-2.09）。 */
+  readonly #firedEventIds: Set<string>;
+  /** 発火が累積した環境調整（Persisted・代表 Zone の security/comfort への加算・EP-2.09）。 */
+  #envAdjust: EnvironmentDelta;
 
   private constructor(deps: GameRuntimeDeps) {
     const config = deps.config ?? DEFAULT_TRIAL_CONFIG;
@@ -126,9 +139,11 @@ export class GameRuntime {
       this.#rng = restoreRng(snapshot.determinism.seed, snapshot.determinism.streamState);
       this.#time = new TimeSystem(this.#bus, config, snapshot.progress);
       this.#store = new StateStore(this.#bus, snapshot.gamePhase, snapshot.simulation.cat);
-      // 旧セーブに observationLog / traces が無ければ [] で補完（B4 §9.6 フィールド追加）。
+      // 旧セーブに observationLog / traces / 発火状態 が無ければ既定で補完（B4 §9.6 フィールド追加）。
       this.#observationLog = snapshot.observationLog ?? [];
       this.#pendingTraces = snapshot.traces ?? [];
+      this.#firedEventIds = new Set(snapshot.firedEventIds ?? []);
+      this.#envAdjust = snapshot.envAdjust ?? { security: 0, comfort: 0 };
     } else {
       this.#seed = deps.seed;
       this.#rng = createRng(deps.seed);
@@ -136,11 +151,14 @@ export class GameRuntime {
       this.#store = new StateStore(this.#bus, 'booting', initialCatState());
       this.#observationLog = [];
       this.#pendingTraces = [];
+      this.#firedEventIds = new Set();
+      this.#envAdjust = { security: 0, comfort: 0 };
     }
 
     this.#catAccess = getSimulationStateAccess(this.#store);
     this.#sim = new SimulationSystem(this.#store);
     this.#env = buildDefaultEnvironment();
+    this.#events = buildEventContent();
     this.#actionSlots = this.#slotsForSegment(this.#time.now().segment);
     // 初期表示スナップショット（履歴へは追記しない・リロードで重複させない）。
     this.#lastObservation = this.#observeCurrent();
@@ -195,6 +213,31 @@ export class GameRuntime {
       simulation: { cat: this.#catAccess.getCatState() },
       observationLog: this.#observationLog,
       traces: this.#pendingTraces,
+      firedEventIds: [...this.#firedEventIds],
+      envAdjust: this.#envAdjust,
+    };
+  }
+
+  /**
+   * 現 Day に達したイベントを発火し、環境調整を累積する（EP-2.09 発火 runtime）。
+   * ⚠️ 猫の内部状態は変えない（StateChange.target が環境・資源のみ・§2.3）。発火後の反応は Cat AI に委ねる。
+   *    一度だけ発火（firedEventIds）。効果量は仮値・監修待ち（environmentEffect）。
+   */
+  #fireDueEvents(day: number): void {
+    for (const e of dueEvents(this.#events, day, this.#firedEventIds)) {
+      for (const change of e.changes) {
+        this.#envAdjust = combineDelta(this.#envAdjust, environmentEffect(change));
+      }
+      this.#firedEventIds.add(e.id);
+    }
+  }
+
+  /** 発火の累積を反映した、現在の代表 Zone 環境（基準 env に調整を加えてクランプ）。 */
+  #currentEnvironment(): { readonly zoneSecurity: number; readonly zoneComfort: number } {
+    const base = this.#env.defaultEnvironment();
+    return {
+      zoneSecurity: clamp01(base.zoneSecurity + this.#envAdjust.security),
+      zoneComfort: clamp01(base.zoneComfort + this.#envAdjust.comfort),
     };
   }
 
@@ -237,11 +280,14 @@ export class GameRuntime {
   advanceSegment(): TimeState {
     const state = this.#time.advanceSegment();
     if (state.phase === 'running') {
+      // 推移の前に、その Day に達したイベントを発火して環境を変える（世界の変化・§2.3）。
+      // 猫はこの変わった環境に対して自律的に反応する（下の updateSegment で Cat AI が決める）。
+      this.#fireDueEvents(state.day);
       this.#sim.updateSegment({
         day: state.day,
         segment: state.segment,
         inRoom: isInRoomSegment(state.segment),
-        environment: this.#env.defaultEnvironment(),
+        environment: this.#currentEnvironment(),
         // 行動選択の揺らぎは用途別ストリームで（B5 §8.4）。root を消費せず fork（保存位置に非依存・決定論）。
         behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
       });

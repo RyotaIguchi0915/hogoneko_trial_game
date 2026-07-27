@@ -286,3 +286,50 @@ describe('GameRuntime — 痕跡の発見（EP-2.06 / B2 §3.2）', () => {
     expect(run()).toEqual(run());
   });
 });
+
+describe('GameRuntime — イベント発火（EP-2.09 発火 runtime）', () => {
+  const readSave = (storage: SaveStorage) =>
+    JSON.parse(storage.read('hogoneko/save/v1') as string).data as Record<string, any>;
+
+  it('その Day に達するとイベントが発火し、環境調整・発火IDが保存される', () => {
+    const storage = createMemorySaveStorage();
+    const rt = GameRuntime.create({ storage, clock, seed: 1 });
+    rt.advanceSegment(); // Day1: seeding(day1・cover0.8) が発火
+    rt.save();
+    const data = readSave(storage);
+    expect(data.firedEventIds).toContain('event.safe_place.seeding');
+    expect(data.envAdjust.security).toBeGreaterThan(0); // 遮蔽が増え安全側へ（仮値）
+    rt.dispose();
+  });
+
+  it('同じイベントは同一 Day 内で再発火しない（envAdjust が積み増しされない）', () => {
+    const storage = createMemorySaveStorage();
+    const rt = GameRuntime.create({ storage, clock, seed: 1 });
+    rt.advanceSegment(); // Day1 Seg1: seeding 発火
+    rt.save();
+    const afterFire = readSave(storage).envAdjust.security;
+    for (let i = 0; i < 4; i++) rt.advanceSegment(); // Day1 Seg2..5（まだ Day1）
+    rt.save();
+    expect(readSave(storage).envAdjust.security).toBe(afterFire); // 一度きり
+    rt.dispose();
+  });
+
+  it('発火状態がセーブ往復で保たれ、復元後に再発火しない', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 1 });
+    for (let i = 0; i < 8; i++) rt1.advanceSegment(); // Day1..2: seeding + contrast 発火
+    rt1.save();
+    const before = readSave(storage);
+    expect(before.firedEventIds).toEqual(
+      expect.arrayContaining(['event.safe_place.seeding', 'event.safe_place.contrast']),
+    );
+    rt1.dispose();
+
+    const rt2 = GameRuntime.create({ storage, clock, seed: 1 });
+    rt2.save(); // 復元直後に保存 → 発火状態は変わらない（再発火しない）
+    const after = readSave(storage);
+    expect([...after.firedEventIds].sort()).toEqual([...before.firedEventIds].sort());
+    expect(after.envAdjust).toEqual(before.envAdjust);
+    rt2.dispose();
+  });
+});

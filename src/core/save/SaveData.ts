@@ -64,6 +64,16 @@ export interface GameSnapshot {
    * ⚠️ 任意（後方互換）: 旧セーブには無いため absent を許容し、復元時は [] で補完する（B4 §9.6）。
    */
   readonly traces?: readonly Trace[];
+  /**
+   * 発火済みイベントID（B4 §9.2 Persisted「Event State」/ EP-2.09）。一度だけ発火の判定に使う。
+   * ⚠️ 任意（後方互換）: absent は [] で補完（B4 §9.6）。
+   */
+  readonly firedEventIds?: readonly string[];
+  /**
+   * 発火が累積した環境調整（代表 Zone の security/comfort 加算・EP-2.09）。
+   * ⚠️ 派生ではなく「発火の結果として世界に加わった変化」の元データ。任意（後方互換）: absent は 0 で補完。
+   */
+  readonly envAdjust?: { readonly security: number; readonly comfort: number };
 }
 
 export interface SaveMeta {
@@ -231,6 +241,13 @@ export function validateStructure(value: unknown): ValidationResult {
   }
   if (data.traces !== undefined && !Array.isArray(data.traces)) {
     push('data.traces is invalid');
+  }
+  // 発火状態（EP-2.09）も任意（後方互換）。firedEventIds は配列、envAdjust は数値2項。
+  if (data.firedEventIds !== undefined && !Array.isArray(data.firedEventIds)) {
+    push('data.firedEventIds is invalid');
+  }
+  if (data.envAdjust !== undefined && !nums(data.envAdjust, ['security', 'comfort'])) {
+    push('data.envAdjust is invalid');
   }
 
   return { valid: errors.length === 0, errors };

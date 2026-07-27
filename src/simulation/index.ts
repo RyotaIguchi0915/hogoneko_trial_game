@@ -6,6 +6,13 @@ export { updateCatSegment, type SegmentContext, type CatEnvironmentInput } from 
 export { effectiveUrgency, clamp01, clamp, PROVISIONAL } from './catDynamics';
 export { feedCat, INTERVENTION_PROVISIONAL } from './interventions';
 export { traceForBehavior } from './trace';
+export { dueEvents } from './eventSchedule';
+export {
+  environmentEffect,
+  combineDelta,
+  EVENT_EFFECT_PROVISIONAL,
+  type EnvironmentDelta,
+} from './eventEffects';
 export { EnvironmentSystem, type ZoneEnvironment } from './environment/EnvironmentSystem';
 export {
   computeZoneAttributes,
