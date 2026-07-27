@@ -188,10 +188,25 @@ export function validateStructure(value: unknown): ValidationResult {
     push(`data.gamePhase invalid: ${String(data.gamePhase)}`);
   }
 
+  // Cat State は全形を検証する（B4 §9.5 参照整合性）。
+  // ⚠️ cat の形（needs/affect/relationship/behavior）を変えたら、ここと schema 版/マイグレーションを更新する。
+  //    検証が緩いと、互換性のない旧セーブが「通って」しまい、復元後に実行時クラッシュする（EP-2.02 の教訓）。
   const simulation = data.simulation as Record<string, unknown> | undefined;
   const cat = simulation?.cat as Record<string, unknown> | undefined;
+  const nums = (o: unknown, keys: readonly string[]): boolean =>
+    typeof o === 'object' &&
+    o !== null &&
+    keys.every((k) => typeof (o as Record<string, unknown>)[k] === 'number');
   if (!cat || typeof cat.arrived !== 'boolean') {
     push('data.simulation.cat is invalid');
+  } else {
+    if (!nums(cat.needs, ['safety', 'hunger', 'elimination']))
+      push('data.simulation.cat.needs is invalid');
+    if (!nums(cat.affect, ['arousal', 'valence', 'vigilance', 'stressLoad']))
+      push('data.simulation.cat.affect is invalid');
+    if (!nums(cat.relationship, ['trust', 'familiarity']))
+      push('data.simulation.cat.relationship is invalid');
+    if (typeof cat.behavior !== 'string') push('data.simulation.cat.behavior is invalid');
   }
 
   return { valid: errors.length === 0, errors };

@@ -104,6 +104,17 @@ describe('SaveData — validateStructure', () => {
     expect(validateStructure(null).valid).toBe(false);
     expect(validateStructure('nope').valid).toBe(false);
   });
+
+  it('互換性のない cat（needs/affect 欠落の旧形式）を拒否する（EP-2.02 回帰防止）', () => {
+    const save = serialize(
+      { ...sampleSnapshot(), simulation: { cat: { arrived: false } } } as unknown as GameSnapshot,
+      1,
+      'x',
+    );
+    const result = validateStructure(save);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join()).toMatch(/cat\.needs is invalid/);
+  });
 });
 
 describe('SaveData — migrate', () => {
