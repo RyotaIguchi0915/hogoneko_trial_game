@@ -1,4 +1,8 @@
 import type { AppView } from './appView';
+import type { SpriteKey } from './sprites';
+
+/** 読み込み済みスプライト（Scene が渡す）。未読込のキーは省略され、幾何プレースホルダにフォールバック。 */
+export type SpriteImages = Partial<Record<SpriteKey, CanvasImageSource>>;
 
 /**
  * drawScene — シーンの Canvas 2D 描画（L4 Presentation / ADR-001 / B4 L4）
@@ -25,6 +29,7 @@ export type Scene2D = Pick<
   | 'ellipse'
   | 'fill'
   | 'fillText'
+  | 'drawImage'
 > & {
   fillStyle: string | CanvasGradient | CanvasPattern;
   strokeStyle: string | CanvasGradient | CanvasPattern;
@@ -43,16 +48,17 @@ const COLORS = {
   text: '#4a4a4a',
 } as const;
 
-/** 猫が「隠れている／見当たらない」観察かどうか（描画上、猫を出すか否かの判断）。 */
-function catIsVisible(view: AppView): boolean {
-  return view.observations.length > 0 && !view.observations.includes('姿が見当たらない');
-}
-
 /**
  * 論理サイズ (width×height, CSS px) に対してシーンを描く。
  * DPR スケールは呼び出し側（Scene.tsx）が ctx に適用済みである前提。
  */
-export function drawScene(ctx: Scene2D, view: AppView, width: number, height: number): void {
+export function drawScene(
+  ctx: Scene2D,
+  view: AppView,
+  width: number,
+  height: number,
+  sprites: SpriteImages = {},
+): void {
   ctx.clearRect(0, 0, width, height);
 
   // 背景
@@ -80,21 +86,22 @@ export function drawScene(ctx: Scene2D, view: AppView, width: number, height: nu
   ctx.fillStyle = COLORS.furniture;
   ctx.fillRect(boxX, boxY, boxW, boxH);
 
-  // 猫（プレースホルダ）: 観察可能なときだけ、部屋の中央にそっと置く。
-  //   「姿が見当たらない」ときは描かない（隠れている）。位置は Cat AI（EP-2.02）未実装のため暫定中央。
-  if (catIsVisible(view)) {
-    ctx.fillStyle = COLORS.cat;
-    ctx.beginPath();
-    ctx.ellipse(
-      roomX + roomW * 0.42,
-      roomY + roomH * 0.55,
-      roomW * 0.1,
-      roomH * 0.07,
-      0,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
+  // 猫: 観察可能な姿勢（catSprite）があるときだけ、部屋の中央にそっと置く。
+  //   catSprite=null（隠れ/不在）なら描かない。位置は Cat の location 未実装のため暫定中央。
+  //   対応スプライト画像が読込済みなら drawImage、未読込なら楕円プレースホルダにフォールバック。
+  if (view.catSprite) {
+    const cx = roomX + roomW * 0.42;
+    const cy = roomY + roomH * 0.5;
+    const image = sprites[view.catSprite];
+    if (image) {
+      const size = Math.min(roomW, roomH) * 0.42;
+      ctx.drawImage(image, cx - size / 2, cy - size / 2, size, size);
+    } else {
+      ctx.fillStyle = COLORS.cat;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + roomH * 0.05, roomW * 0.1, roomH * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // 観察テキスト（見えた事実のみ）。アクセシブルな本文は App の caption 側にも持つ。

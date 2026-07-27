@@ -1,4 +1,5 @@
 import type { RestoreStatus, TrialPhase } from '@core/index';
+import type { SpriteKey } from './sprites';
 
 /**
  * AppView — L4 の描画に渡す表示モデル（L4 Presentation）
@@ -14,4 +15,6 @@ export interface AppView {
   readonly phase: TrialPhase;
   /** 観測された現象の表示テキスト（Phenomenon をローカライズ済み・EP-2.10）。 */
   readonly observations: readonly string[];
+  /** 猫の姿勢スプライト（観測 descriptor 由来）。隠れ/不在なら null。数値ではない（憲章 I-1）。 */
+  readonly catSprite: SpriteKey | null;
 }

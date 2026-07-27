@@ -27,6 +27,7 @@ function stubCtx(): Scene2D & { calls: Record<string, number> } {
     stroke: rec('stroke'),
     ellipse: rec('ellipse'),
     fill: rec('fill'),
+    drawImage: rec('drawImage'),
     fillText: vi.fn(),
   } as unknown as Scene2D & { calls: Record<string, number> };
 }
@@ -39,6 +40,7 @@ function view(overrides: Partial<AppView> = {}): AppView {
     segmentsPerDay: 6,
     phase: 'running',
     observations: ['丸くなって休んでいる'],
+    catSprite: 'cat_curled',
     ...overrides,
   };
 }
@@ -53,21 +55,34 @@ describe('drawScene（EP-2.10 Canvas 基盤）', () => {
     expect(ctx.fillText).toHaveBeenCalledWith('丸くなって休んでいる', 160, expect.any(Number));
   });
 
-  it('観察可能なとき猫（プレースホルダ）を描く', () => {
+  it('catSprite があってスプライト画像が未読込なら楕円プレースホルダ', () => {
     const ctx = stubCtx();
-    drawScene(ctx, view({ observations: ['丸くなって休んでいる'] }), 320, 220);
+    drawScene(ctx, view({ catSprite: 'cat_curled' }), 320, 220);
     expect(ctx.calls.ellipse).toBeGreaterThan(0);
+    expect(ctx.calls.drawImage ?? 0).toBe(0);
   });
 
-  it('「姿が見当たらない」ときは猫を描かない（隠れている）', () => {
+  it('catSprite に対応する画像があれば drawImage で描く（EP-2.10 サンプル絵）', () => {
     const ctx = stubCtx();
-    drawScene(ctx, view({ observations: ['姿が見当たらない'] }), 320, 220);
+    const fakeSprite = {} as unknown as CanvasImageSource;
+    drawScene(ctx, view({ catSprite: 'cat_walking' }), 320, 220, { cat_walking: fakeSprite });
+    expect(ctx.calls.drawImage).toBeGreaterThan(0);
+    expect(ctx.calls.ellipse ?? 0).toBe(0); // 画像があれば楕円は描かない
+  });
+
+  it('catSprite が null（隠れ/不在）なら猫を描かない', () => {
+    const ctx = stubCtx();
+    const fakeSprite = {} as unknown as CanvasImageSource;
+    drawScene(ctx, view({ catSprite: null }), 320, 220, { cat_curled: fakeSprite });
     expect(ctx.calls.ellipse ?? 0).toBe(0);
+    expect(ctx.calls.drawImage ?? 0).toBe(0);
   });
 
   it('観察が空でも … を描いて落ちない', () => {
     const ctx = stubCtx();
-    expect(() => drawScene(ctx, view({ observations: [] }), 320, 220)).not.toThrow();
+    expect(() =>
+      drawScene(ctx, view({ observations: [], catSprite: null }), 320, 220),
+    ).not.toThrow();
     expect(ctx.fillText).toHaveBeenCalledWith('…', 160, expect.any(Number));
   });
 });

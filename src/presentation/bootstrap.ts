@@ -2,6 +2,7 @@ import { DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock } from '@core/index'
 import { Localization } from '@data/index';
 import { GameRuntime } from '@app/index';
 import { LOCALES } from '@content/locales';
+import { spriteForDescriptor } from './sprites';
 import type { AppView } from './App';
 
 /**
@@ -50,7 +51,10 @@ export function bootstrap(deps: BootstrapDeps): BootstrapResult {
   // ⚠️ L4 が受け取るのは数値を持たない Phenomenon のみ。ここで labelKey→表示文字列に解決する。
   //    現状 descriptor は labelKey と同一 ID（B11 §4 の最小運用）。多段解像度は今後。
   const localization = new Localization(LOCALES, 'ja');
-  const observations = runtime.observe().map((p) => localization.resolve(p.descriptor));
+  const phenomena = runtime.observe();
+  const observations = phenomena.map((p) => localization.resolve(p.descriptor));
+  // 主たる観察の descriptor から猫の姿勢スプライトを決める（隠れ/不在なら null）。
+  const catSprite = spriteForDescriptor(phenomena[0]?.descriptor);
 
   const progress = runtime.reader.getProgress();
   const view: AppView = {
@@ -60,6 +64,7 @@ export function bootstrap(deps: BootstrapDeps): BootstrapResult {
     segmentsPerDay: DEFAULT_TRIAL_CONFIG.segmentsPerDay,
     phase: progress.phase,
     observations,
+    catSprite,
   };
 
   return { runtime, view };
