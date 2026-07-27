@@ -1,23 +1,15 @@
-import type { RestoreStatus, TrialPhase } from '@core/index';
+import type { RestoreStatus } from '@core/index';
+import { Scene } from './Scene';
+import type { AppView } from './appView';
 
 /**
- * App — L4 Presentation のルート（EP-14 骨格）。
+ * App — L4 Presentation のルート（EP-14 骨格 / EP-2.10 描画）。
  *
- * 現時点では基盤検証のための静かなプレースホルダ。
- * ゲームプレイ（タイトル・部屋・猫）は Sprint 2 以降。
- *
+ * Canvas シーン（Scene）＋アクセシブルな観察キャプションを静かに描く。
  * トーン方針（Pillar 6 / 憲章§9.6）に従い、派手な要素を持たない。
- * ⚠️ この層は Cat State（真実）を受け取らない。表示するのは全体進行のみ（憲章 I-1）。
+ * ⚠️ この層は Cat State（真実）を受け取らない。受け取るのは Phenomenon 由来の文字列と進行のみ（憲章 I-1）。
  */
-export interface AppView {
-  readonly restoreStatus: RestoreStatus;
-  readonly day: number;
-  readonly segment: number;
-  readonly segmentsPerDay: number;
-  readonly phase: TrialPhase;
-  /** 観測された現象の表示テキスト（Phenomenon をローカライズ済み・数値なし・EP-2.10）。 */
-  readonly observations: readonly string[];
-}
+export type { AppView } from './appView';
 
 /** 復元経路の静かな言い換え（憲章§10.2・§11.4 の語彙）。 */
 function restoreNote(status: RestoreStatus): string {
@@ -45,7 +37,10 @@ export function App({ view }: { view: AppView }) {
       }}
     >
       <div style={{ textAlign: 'center', lineHeight: 2, maxWidth: '28rem', padding: '0 1rem' }}>
-        {/* 観測された猫の様子（見えた事実のみ）。構図は固定し、変わるのはこの言葉だけ（B3 ③） */}
+        {/* Canvas シーン（装飾・ADR-001）。本番アート/レイアウトは OI-6/OI-4。 */}
+        <Scene view={view} />
+
+        {/* 観測された猫の様子（見えた事実のみ）。canvas の a11y 代替も兼ねる。構図固定・変わるのは言葉だけ（B3 ③） */}
         {view.observations.length > 0 ? (
           <div aria-label="観察" style={{ margin: 0 }}>
             {view.observations.map((text, i) => (
