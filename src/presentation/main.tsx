@@ -43,6 +43,6 @@ if (import.meta.env.DEV) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App view={view} />
+    <App runtime={runtime} initialView={view} />
   </StrictMode>,
 );

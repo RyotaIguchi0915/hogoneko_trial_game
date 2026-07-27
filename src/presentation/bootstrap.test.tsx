@@ -1,83 +1,80 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { bootstrap } from './bootstrap';
 import { App } from './App';
 import { createLocalStorageSaveStorage } from './localStorageStorage';
 
 /**
- * EP-14 の実ブラウザ相当スモーク（jsdom + window.localStorage + React 描画）。
+ * EP-14/2.08/2.10 の実ブラウザ相当スモーク（jsdom + window.localStorage + React 描画）。
  *
- * 「開くと空のシーン → 時間が進む → リロードで状態が復元される」を、
- * ブラウザ API（localStorage）と実際の DOM 描画を通して確認する。
- * 「リロード」= 同じ localStorage を後ろ盾に bootstrap() を再実行すること。
+ * 「開くとシーンが出る → 次へで時間が進む → 餌をやる（介入）→ リロードで復元」を、
+ * ブラウザ API（localStorage）と実際の DOM 操作を通して確認する。
  */
 const fixedClock = () => 1_700_000_000_000;
 
-describe('EP-14 Bootstrap smoke（localStorage + DOM）', () => {
+describe('Bootstrap / App smoke（localStorage + DOM）', () => {
   beforeEach(() => {
     window.localStorage.clear();
     cleanup();
   });
 
-  it('初回起動: 観察テキストが描画され、「はじめから」・進行が出る（EP-2.10）', () => {
-    const { view } = bootstrap({
+  it('初回起動: Day1 Seg0 の初期表示。自動では進まない（プレイヤー駆動）', () => {
+    const { runtime, view } = bootstrap({
       storage: createLocalStorageSaveStorage(),
       clock: fixedClock,
       seed: 12345,
     });
-
-    render(<App view={view} />);
-    // 観測された猫の様子が表示される（具体の行動は Cat AI 次第なので、描画配線のみ検証）
-    expect(view.observations.length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('観察')).toBeInTheDocument();
+    expect(view.day).toBe(1);
+    expect(view.segment).toBe(0); // 自動前進しない
+    render(<App runtime={runtime} initialView={view} />);
     expect(screen.getByText('はじめから')).toBeInTheDocument();
-    // 起動時に 1 Segment 前進している（初期 seg0 → seg1 → 表示 "2/6"）
-    expect(screen.getByText(/1日目 ・ 2\/6/)).toBeInTheDocument();
+    expect(screen.getByText(/1日目 ・ 1\/6/)).toBeInTheDocument();
   });
 
-  it('観察が無いときは … を出す（App フォールバック）', () => {
-    render(
-      <App
-        view={{
-          restoreStatus: 'empty',
-          day: 1,
-          segment: 0,
-          segmentsPerDay: 6,
-          phase: 'running',
-          observations: [],
-          catSprite: null,
-        }}
-      />,
-    );
-    expect(screen.getByLabelText('準備中').textContent).toBe('…');
+  it('「次へ」で Segment が進む', () => {
+    const { runtime, view } = bootstrap({
+      storage: createLocalStorageSaveStorage(),
+      clock: fixedClock,
+      seed: 12345,
+    });
+    render(<App runtime={runtime} initialView={view} />);
+    fireEvent.click(screen.getByText('次へ'));
+    expect(screen.getByText(/1日目 ・ 2\/6/)).toBeInTheDocument(); // seg0 → seg1
   });
 
-  it('リロード（同一 localStorage で再起動）すると前回の続きから継続する', () => {
+  it('不在 Segment（Seg0）では餌やりは不可（行動枠0）', () => {
+    const { runtime, view } = bootstrap({
+      storage: createLocalStorageSaveStorage(),
+      clock: fixedClock,
+      seed: 12345,
+    });
+    expect(view.actionSlots).toBe(0); // Seg0=未明=不在
+    render(<App runtime={runtime} initialView={view} />);
+    expect(screen.getByLabelText(/餌をやる/)).toBeDisabled();
+  });
+
+  it('在室 Segment では餌やりが可能で、行動枠が減る（B2 §4）', () => {
+    const { runtime, view } = bootstrap({
+      storage: createLocalStorageSaveStorage(),
+      clock: fixedClock,
+      seed: 12345,
+    });
+    render(<App runtime={runtime} initialView={view} />);
+    fireEvent.click(screen.getByText('次へ')); // Seg1=朝=在室（枠2）
+    expect(screen.getByLabelText('餌をやる（残り2）')).toBeEnabled();
+    fireEvent.click(screen.getByLabelText('餌をやる（残り2）'));
+    expect(screen.getByLabelText('餌をやる（残り1）')).toBeInTheDocument(); // 枠が1減る
+  });
+
+  it('リロード（同一 localStorage で再 bootstrap）で進行が復元される', () => {
     const storage = createLocalStorageSaveStorage();
-
-    // 1回目の起動: seg0 → seg1、保存
     const first = bootstrap({ storage, clock: fixedClock, seed: 12345 });
-    expect(first.view.restoreStatus).toBe('empty');
-    expect(first.view.segment).toBe(1);
+    first.runtime.advanceSegment();
+    first.runtime.save();
+    const segAfter = first.runtime.reader.getProgress().segment;
 
-    // 2回目（リロード相当）: 保存済み seg1 を復元 → さらに seg2 へ
-    const second = bootstrap({ storage, clock: fixedClock, seed: 999 /* 復元時は無視される */ });
+    const second = bootstrap({ storage, clock: fixedClock, seed: 999 });
     expect(second.view.restoreStatus).toBe('ok');
-    expect(second.view.segment).toBe(2);
-
-    render(<App view={second.view} />);
-    expect(screen.getByText('前回の続きから')).toBeInTheDocument();
-    expect(screen.getByText(/1日目 ・ 3\/6/)).toBeInTheDocument();
-  });
-
-  it('複数回リロードで日をまたいでも進行が保たれる', () => {
-    const storage = createLocalStorageSaveStorage();
-    // segmentsPerDay=6。6回起動すれば Day2 に入る。
-    let last = bootstrap({ storage, clock: fixedClock, seed: 1 });
-    for (let i = 0; i < 5; i++) {
-      last = bootstrap({ storage, clock: fixedClock, seed: 1 });
-    }
-    expect(last.view.day).toBe(2);
-    expect(last.view.restoreStatus).toBe('ok');
+    expect(second.view.segment).toBe(segAfter);
   });
 });

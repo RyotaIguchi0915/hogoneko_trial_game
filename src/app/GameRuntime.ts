@@ -23,9 +23,17 @@ import {
 } from '@core/index';
 import { initialCatState } from '@core/state/catState';
 import { getSimulationStateAccess, type SimulationStateAccess } from '@core/state/simulationAccess';
-import { SimulationSystem, type EnvironmentSystem } from '@simulation/index';
+import { SimulationSystem, feedCat, type EnvironmentSystem } from '@simulation/index';
 import { toPhenomena, type Phenomenon } from '@perception/index';
 import { buildDefaultEnvironment } from './environment';
+
+/** 在室 Segment ごとの行動枠（B2 §4 / B9 §3.3）。観察=0/介入=有限の非対称。 */
+const SLOTS_PER_IN_ROOM_SEGMENT = 2;
+
+/** 介入の結果。失敗理由を返す（UI が静かに提示）。 */
+export type InterventionResult =
+  | { readonly ok: true; readonly slotsLeft: number }
+  | { readonly ok: false; readonly reason: 'away' | 'no-slots' };
 
 /**
  * Game Runtime — 5層貫通の合成ルート（合成層 src/app / EP-14・EP-2.05）
@@ -46,6 +54,8 @@ export interface RuntimeReader {
   getProgress(): TimeState;
   /** 起動時の復元経路（診断・静かな通知用）。 */
   getRestoreStatus(): RestoreStatus;
+  /** 現 Segment に残る行動枠（B2 §4）。不在 Segment では 0。 */
+  getActionSlots(): number;
 }
 
 export interface GameRuntimeDeps {
@@ -70,6 +80,8 @@ export class GameRuntime {
   #rng: Rng;
   #seed: number;
   readonly #restoreStatus: RestoreStatus;
+  /** 現 Segment の残り行動枠（transient・保存しない・B4 §9.2）。 */
+  #actionSlots: number;
 
   private constructor(deps: GameRuntimeDeps) {
     const config = deps.config ?? DEFAULT_TRIAL_CONFIG;
@@ -99,9 +111,15 @@ export class GameRuntime {
     this.#catAccess = getSimulationStateAccess(this.#store);
     this.#sim = new SimulationSystem(this.#store);
     this.#env = buildDefaultEnvironment();
+    this.#actionSlots = this.#slotsForSegment(this.#time.now().segment);
 
     this.#manager = new GameManager();
     this.#manager.register(this.#time).register(this.#save);
+  }
+
+  /** その Segment の行動枠数（在室なら 2、不在は 0）。 */
+  #slotsForSegment(segment: number): number {
+    return isInRoomSegment(segment) ? SLOTS_PER_IN_ROOM_SEGMENT : 0;
   }
 
   /** Runtime を生成し、セーブがあれば復元した状態で初期化する。 */
@@ -120,6 +138,7 @@ export class GameRuntime {
       getGamePhase: () => this.#store.getGamePhase(),
       getProgress: () => this.#time.now(),
       getRestoreStatus: () => this.#restoreStatus,
+      getActionSlots: () => this.#actionSlots,
     };
   }
 
@@ -160,7 +179,23 @@ export class GameRuntime {
         behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
       });
     }
+    // 行動枠を新 Segment 分にリセット（未使用枠は繰り越さない・B2 §4）。
+    this.#actionSlots = this.#slotsForSegment(state.segment);
     return state;
+  }
+
+  /**
+   * 餌をやる（介入・B2 §4 / B9 §3.4）。行動枠を1消費し、猫の空腹を和らげる。
+   * ⚠️ 猫を操作するのではなく、環境（資源）への働きかけの結果として状態が変わる（憲章 I-2）。
+   *    Cat State は直接書き換えず、L2 権限（simulationAccess）＋純粋関数 feedCat 経由で更新する。
+   * 在室 Segment で枠がある時のみ成功。観察は無制限・介入は有限の非対称（B2 §4）。
+   */
+  feed(): InterventionResult {
+    if (!isInRoomSegment(this.#time.now().segment)) return { ok: false, reason: 'away' };
+    if (this.#actionSlots <= 0) return { ok: false, reason: 'no-slots' };
+    this.#catAccess.applyCatState(feedCat(this.#catAccess.getCatState()));
+    this.#actionSlots -= 1;
+    return { ok: true, slotsLeft: this.#actionSlots };
   }
 
   /**

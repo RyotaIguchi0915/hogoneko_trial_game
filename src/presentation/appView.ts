@@ -17,4 +17,6 @@ export interface AppView {
   readonly observations: readonly string[];
   /** 猫の姿勢スプライト（観測 descriptor 由来）。隠れ/不在なら null。数値ではない（憲章 I-1）。 */
   readonly catSprite: SpriteKey | null;
+  /** 現 Segment に残る行動枠（B2 §4）。介入 UI の可否に使う。0 なら介入不可（不在 or 使い切り）。 */
+  readonly actionSlots: number;
 }

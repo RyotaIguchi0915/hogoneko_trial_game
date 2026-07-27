@@ -8,6 +8,7 @@ import {
   updateValence,
   updateRelationship,
   updateSafety,
+  applyNeedSatisfaction,
 } from './catDynamics';
 import { selectBehavior } from './catAI';
 
@@ -79,9 +80,12 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
   // step14-15: Cat AI が更新後の状態から行動を選択（B6 / §8.1）。直接書き換えず新状態に載せる。
   const behavior = selectBehavior({ needs, affect, relationship }, ctx.behaviorRng);
 
+  // step17: 行動による Need 充足（eating→hunger 低下）。選択した行動の結果を反映。
+  const satisfiedNeeds = applyNeedSatisfaction(needs, behavior);
+
   return {
     arrived: state.arrived,
-    needs,
+    needs: satisfiedNeeds,
     affect,
     relationship,
     behavior,

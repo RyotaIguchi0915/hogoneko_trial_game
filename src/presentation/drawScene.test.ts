@@ -41,6 +41,7 @@ function view(overrides: Partial<AppView> = {}): AppView {
     phase: 'running',
     observations: ['丸くなって休んでいる'],
     catSprite: 'cat_curled',
+    actionSlots: 0,
     ...overrides,
   };
 }

@@ -116,3 +116,46 @@ describe('GameRuntime — Segment ループが Simulation を駆動する（EP-2
     rt2.dispose();
   });
 });
+
+describe('GameRuntime — 介入（餌やり）と行動枠（EP-2.08 / B2 §4）', () => {
+  it('起動直後（Seg0=未明=不在）は行動枠0・給餌できない', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    expect(rt.reader.getActionSlots()).toBe(0);
+    expect(rt.feed()).toEqual({ ok: false, reason: 'away' });
+    rt.dispose();
+  });
+
+  it('在室 Segment では枠2・給餌で枠が減り、空腹が下がる', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.advanceSegment(); // Seg1=朝=在室
+    expect(rt.reader.getActionSlots()).toBe(2);
+    const before = rt.createTruthReader().getCatState().needs.hunger;
+
+    const result = rt.feed();
+    expect(result).toEqual({ ok: true, slotsLeft: 1 });
+    expect(rt.reader.getActionSlots()).toBe(1);
+    expect(rt.createTruthReader().getCatState().needs.hunger).toBeLessThan(before);
+    rt.dispose();
+  });
+
+  it('枠を使い切ると給餌できない（観察無制限・介入有限の非対称）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.advanceSegment();
+    rt.feed();
+    rt.feed();
+    expect(rt.reader.getActionSlots()).toBe(0);
+    expect(rt.feed()).toEqual({ ok: false, reason: 'no-slots' });
+    rt.dispose();
+  });
+
+  it('Segment を進めると行動枠がリセットされる（未使用は繰り越さない）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.advanceSegment(); // Seg1 在室 枠2
+    rt.feed(); // 枠1
+    rt.advanceSegment(); // Seg2=昼=不在 → 枠0
+    expect(rt.reader.getActionSlots()).toBe(0);
+    rt.advanceSegment(); // Seg3=夕=在室 → 枠2（リセット）
+    expect(rt.reader.getActionSlots()).toBe(2);
+    rt.dispose();
+  });
+});
