@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMemorySaveStorage } from '@core/index';
+import { createMemorySaveStorage, serialize, type GameSnapshot } from '@core/index';
 import { ContentRegistryBuilder } from '@data/index';
 import { phenomenonSchema, qualifierSchema, type PhenomenonDef } from '@data/schemas/phenomenon';
 import { PHENOMENON_CONTENT, QUALIFIER_CONTENT } from '@content/phenomena';
@@ -52,6 +52,30 @@ describe('GameRuntime.observe（EP-2.04 観測境界の越境点）', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
     // 起動直後は Day1 Seg0（未明・不在）
     expect(rt.observe()[0]?.descriptor).toBe('phenomenon.out_of_sight');
+    rt.dispose();
+  });
+
+  it('互換性のない旧セーブは拒否して新規開始する（クラッシュしない・EP-2.02 回帰防止）', () => {
+    const storage = createMemorySaveStorage();
+    // EP-2.01 以前の最小 cat 形を仕込む（needs/affect 等なし）
+    const bad = serialize(
+      {
+        determinism: { seed: 1, streamState: 1 },
+        progress: { day: 1, segment: 0, phase: 'running' },
+        gamePhase: 'booting',
+        simulation: { cat: { arrived: false } },
+      } as unknown as GameSnapshot,
+      1,
+      'x',
+    );
+    storage.write('hogoneko/save/v1', JSON.stringify(bad));
+
+    const rt = GameRuntime.create({ storage, clock, seed: 1 });
+    expect(rt.reader.getRestoreStatus()).toBe('unrecoverable');
+    expect(() => {
+      rt.advanceSegment();
+      rt.observe();
+    }).not.toThrow();
     rt.dispose();
   });
 });
