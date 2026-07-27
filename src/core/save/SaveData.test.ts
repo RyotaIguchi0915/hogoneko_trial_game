@@ -139,6 +139,18 @@ describe('SaveData — validateStructure', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.join()).toMatch(/observationLog is invalid/);
   });
+
+  it('traces 欠落（旧セーブ）は受理し、配列なら受理・非配列は拒否する（EP-2.06 後方互換）', () => {
+    const withoutTraces = serialize(sampleSnapshot(), 1, 'x');
+    expect('traces' in withoutTraces.data).toBe(false);
+    expect(validateStructure(withoutTraces).valid).toBe(true);
+
+    const withTraces = serialize(sampleSnapshot({ traces: [{ kind: 'shed_fur' }] }), 1, 'x');
+    expect(validateStructure(withTraces).valid).toBe(true);
+
+    const broken = serialize(sampleSnapshot({ traces: 'nope' as unknown as readonly [] }), 1, 'x');
+    expect(validateStructure(broken).errors.join()).toMatch(/traces is invalid/);
+  });
 });
 
 describe('SaveData — migrate', () => {

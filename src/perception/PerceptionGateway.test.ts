@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { initialCatState, type CatState } from '@core/state/catState';
-import { toPhenomena, GATEWAY_DESCRIPTORS } from './PerceptionGateway';
+import { toPhenomena, tracesToPhenomena, GATEWAY_DESCRIPTORS } from './PerceptionGateway';
+import type { Trace } from '@core/state/trace';
 import type { Phenomenon } from './Phenomenon';
 
 function catWith(behavior: CatState['behavior']): CatState {
@@ -66,5 +67,28 @@ describe('PerceptionGateway — 観測境界（憲章 I-1 / B4 P-01）', () => {
       const p = toPhenomena(catWith(b), { inRoom: true, observing: true })[0] as Phenomenon;
       expect(GATEWAY_DESCRIPTORS).toContain(p.descriptor);
     }
+  });
+});
+
+describe('PerceptionGateway — 痕跡→現象（EP-2.06）', () => {
+  it('痕跡種別を subject:trace の Phenomenon（数値なし）へ変換する', () => {
+    const traces: readonly Trace[] = [{ kind: 'shed_fur' }, { kind: 'food_reduced' }];
+    const out = tracesToPhenomena(traces);
+    expect(out).toEqual([
+      { subject: 'trace', descriptor: 'phenomenon.shed_fur', observability: true },
+      { subject: 'trace', descriptor: 'phenomenon.food_reduced', observability: true },
+    ]);
+  });
+
+  it('痕跡が産出する descriptor もすべて既知語彙（B4 P-02）', () => {
+    const kinds: Array<Trace['kind']> = ['shed_fur', 'moved_object', 'food_reduced', 'warm_hollow'];
+    for (const p of tracesToPhenomena(kinds.map((kind) => ({ kind })))) {
+      expect(GATEWAY_DESCRIPTORS).toContain(p.descriptor);
+      for (const value of Object.values(p)) expect(typeof value).not.toBe('number');
+    }
+  });
+
+  it('痕跡なしなら空（発見するものが無い）', () => {
+    expect(tracesToPhenomena([])).toEqual([]);
   });
 });

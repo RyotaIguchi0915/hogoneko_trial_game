@@ -39,6 +39,9 @@ export type { CatState } from './state/catState';
 // 観察履歴（Persisted・Player Knowledge の再生成元）。数値を含まない Phenomenon 由来の記録（G-2）。
 export { appendObservations, type ObservationEntry } from './state/observation';
 
+// 痕跡（Persisted・不在 Segment の産物）。種別のみを持ち数値を含まない（憲章 I-1・EP-2.06）。
+export { appendTraces, type Trace, type TraceKind } from './state/trace';
+
 // --- Save（B4 ⑨ / EP-08） ---
 // ⚠️ storage の具体（localStorage 等）は L4 が実装し、注入する。
 export { SaveSystem, SaveEvents } from './save/SaveSystem';

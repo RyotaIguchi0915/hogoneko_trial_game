@@ -22,11 +22,18 @@ import {
   type TruthReader,
   appendObservations,
   type ObservationEntry,
+  appendTraces,
+  type Trace,
 } from '@core/index';
 import { initialCatState } from '@core/state/catState';
 import { getSimulationStateAccess, type SimulationStateAccess } from '@core/state/simulationAccess';
-import { SimulationSystem, feedCat, type EnvironmentSystem } from '@simulation/index';
-import { toPhenomena, type Phenomenon } from '@perception/index';
+import {
+  SimulationSystem,
+  feedCat,
+  traceForBehavior,
+  type EnvironmentSystem,
+} from '@simulation/index';
+import { toPhenomena, tracesToPhenomena, type Phenomenon } from '@perception/index';
 import { buildDefaultEnvironment } from './environment';
 
 /** 在室 Segment ごとの行動枠（B2 §4 / B9 §3.3）。観察=0/介入=有限の非対称。 */
@@ -63,6 +70,11 @@ export interface RuntimeReader {
    * ⚠️ 返すのは「記録された事実」であって解釈ではない。理解の再生成は L3 Player Knowledge が担う。
    */
   getObservationLog(): readonly ObservationEntry[];
+  /**
+   * 現 Segment の観測スナップショット（描画用・EP-2.06）。在室なら猫の様子＋発見した痕跡、不在なら out_of_sight。
+   * ⚠️ pending 痕跡のクリアに影響されない安定スナップショット。数値を含まない（Phenomenon のみ・I-1）。
+   */
+  getObservation(): readonly Phenomenon[];
 }
 
 export interface GameRuntimeDeps {
@@ -91,6 +103,10 @@ export class GameRuntime {
   #actionSlots: number;
   /** 観察履歴（Persisted・追記のみ・B4 §9.2）。復元元があれば引き継ぐ。 */
   #observationLog: readonly ObservationEntry[];
+  /** 未発見の痕跡（Persisted・不在 Segment で累積、在室で発見して観察履歴へ移す・EP-2.06）。 */
+  #pendingTraces: readonly Trace[];
+  /** 現 Segment の観測スナップショット（transient・描画用。pending クリアに影響されない）。 */
+  #lastObservation: readonly Phenomenon[];
 
   private constructor(deps: GameRuntimeDeps) {
     const config = deps.config ?? DEFAULT_TRIAL_CONFIG;
@@ -110,20 +126,24 @@ export class GameRuntime {
       this.#rng = restoreRng(snapshot.determinism.seed, snapshot.determinism.streamState);
       this.#time = new TimeSystem(this.#bus, config, snapshot.progress);
       this.#store = new StateStore(this.#bus, snapshot.gamePhase, snapshot.simulation.cat);
-      // 旧セーブに observationLog が無ければ [] で補完（B4 §9.6 フィールド追加）。
+      // 旧セーブに observationLog / traces が無ければ [] で補完（B4 §9.6 フィールド追加）。
       this.#observationLog = snapshot.observationLog ?? [];
+      this.#pendingTraces = snapshot.traces ?? [];
     } else {
       this.#seed = deps.seed;
       this.#rng = createRng(deps.seed);
       this.#time = new TimeSystem(this.#bus, config, initialTime());
       this.#store = new StateStore(this.#bus, 'booting', initialCatState());
       this.#observationLog = [];
+      this.#pendingTraces = [];
     }
 
     this.#catAccess = getSimulationStateAccess(this.#store);
     this.#sim = new SimulationSystem(this.#store);
     this.#env = buildDefaultEnvironment();
     this.#actionSlots = this.#slotsForSegment(this.#time.now().segment);
+    // 初期表示スナップショット（履歴へは追記しない・リロードで重複させない）。
+    this.#lastObservation = this.#observeCurrent();
 
     this.#manager = new GameManager();
     this.#manager.register(this.#time).register(this.#save);
@@ -152,6 +172,7 @@ export class GameRuntime {
       getRestoreStatus: () => this.#restoreStatus,
       getActionSlots: () => this.#actionSlots,
       getObservationLog: () => this.#observationLog,
+      getObservation: () => this.#lastObservation,
     };
   }
 
@@ -173,22 +194,39 @@ export class GameRuntime {
       gamePhase: this.#store.getGamePhase(),
       simulation: { cat: this.#catAccess.getCatState() },
       observationLog: this.#observationLog,
+      traces: this.#pendingTraces,
     };
   }
 
   /**
-   * その Segment の観測を履歴へ追記する（Phenomenon → 素の記録・追記のみ）。
+   * 現 Segment のライブ観測（在室=猫の様子＋発見した痕跡 / 不在=out_of_sight）。純粋な読み取り。
+   * ⚠️ 不在中は「自分がいない」ので痕跡は見えない。痕跡は在室で戻った時に**発見**される（B2 §3.2）。
+   */
+  #observeCurrent(): readonly Phenomenon[] {
+    const inRoom = isInRoomSegment(this.#time.now().segment);
+    const catPhenomena = toPhenomena(this.#catAccess.getCatState(), { inRoom, observing: true });
+    const tracePhenomena = inRoom ? tracesToPhenomena(this.#pendingTraces) : [];
+    return [...catPhenomena, ...tracePhenomena];
+  }
+
+  /**
+   * その Segment の観測をスナップショットし、履歴へ一度だけ追記する（Phenomenon → 素の記録・追記のみ）。
    * ⚠️ Segment 進行時に一度だけ呼ぶ（描画のたびに呼ばない）。再描画/リロードで重複追記しないため、
-   *    ここでのみ蓄積し、observe()（描画用）とは分離する（G-2: 保存するのは履歴だけ）。
+   *    ここでのみ蓄積する（G-2: 保存するのは履歴だけ）。#lastObservation は pending クリアの影響を受けない。
    */
   #recordObservation(state: TimeState): void {
-    const entries: readonly ObservationEntry[] = this.observe().map((p) => ({
+    this.#lastObservation = this.#observeCurrent();
+    const entries: readonly ObservationEntry[] = this.#lastObservation.map((p) => ({
       day: state.day,
       segment: state.segment,
       subject: p.subject,
       descriptor: p.descriptor,
     }));
     this.#observationLog = appendObservations(this.#observationLog, entries);
+    // 在室で観測したら pending 痕跡は「発見済み」→ クリア（次の不在期間と混ざらない・重複記録しない）。
+    if (isInRoomSegment(state.segment)) {
+      this.#pendingTraces = [];
+    }
   }
 
   /**
@@ -207,6 +245,12 @@ export class GameRuntime {
         // 行動選択の揺らぎは用途別ストリームで（B5 §8.4）。root を消費せず fork（保存位置に非依存・決定論）。
         behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
       });
+      // 不在 Segment: 猫が「見ていない間」に残した痕跡を生成し累積（在室で発見される・EP-2.06）。
+      //   決定論的（行動→種別の純粋写像）。痕跡を残さない行動もある（hiding/alert）。
+      if (!isInRoomSegment(state.segment)) {
+        const kind = traceForBehavior(this.#catAccess.getCatState().behavior);
+        if (kind) this.#pendingTraces = appendTraces(this.#pendingTraces, [{ kind }]);
+      }
       // 推移後の Segment を観測し、履歴へ一度だけ追記（Player Knowledge の再生成元・G-2）。
       this.#recordObservation(state);
     }
@@ -235,11 +279,8 @@ export class GameRuntime {
    * L4 は本メソッドの戻り値（Phenomenon のみ）を受け取り、Cat State には触れられない（憲章 I-1）。
    */
   observe(observing = true): readonly Phenomenon[] {
-    const segment = this.#time.now().segment;
-    return toPhenomena(this.#catAccess.getCatState(), {
-      inRoom: isInRoomSegment(segment),
-      observing,
-    });
+    if (!observing) return []; // P-03: 見ていない対象の情報は返さない
+    return this.#observeCurrent();
   }
 
   /** 現在状態を保存する（自動保存の実体）。失敗は結果で返る（AA-75）。 */

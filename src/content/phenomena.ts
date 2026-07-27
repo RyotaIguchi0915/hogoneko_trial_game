@@ -15,9 +15,11 @@ export const PHENOMENON_CONTENT: readonly unknown[] = [
   { id: 'phenomenon.roaming', channel: 'direct', labelKey: 'phenomenon.roaming' },
   { id: 'phenomenon.at_food', channel: 'direct', labelKey: 'phenomenon.at_food' },
   { id: 'phenomenon.self_grooming', channel: 'direct', labelKey: 'phenomenon.self_grooming' },
-  // indirect（痕跡・生成は EP-2.06。語彙は先行定義）
+  // indirect（痕跡・不在 Segment の産物・EP-2.06）
   { id: 'phenomenon.shed_fur', channel: 'indirect', labelKey: 'phenomenon.shed_fur' },
   { id: 'phenomenon.moved_object', channel: 'indirect', labelKey: 'phenomenon.moved_object' },
+  { id: 'phenomenon.food_reduced', channel: 'indirect', labelKey: 'phenomenon.food_reduced' },
+  { id: 'phenomenon.warm_hollow', channel: 'indirect', labelKey: 'phenomenon.warm_hollow' },
 ];
 
 export const QUALIFIER_CONTENT: readonly unknown[] = [
