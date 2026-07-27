@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { RestoreStatus } from '@core/index';
+import type { RestoreStatus, GamePhase } from '@core/index';
 import type { GameRuntime } from '@app/index';
 import { Scene } from './Scene';
 import { computeView } from './bootstrap';
@@ -40,6 +40,20 @@ const buttonStyle = {
   cursor: 'pointer',
 } as const;
 
+/**
+ * 結末アークの語り（EP-3.01 物語アーク・プレースホルダ）。
+ * ⚠️ 去就の決定の中身・結末の意味づけ・本文・演出は**監修/OI-4**。ここは遷移を静かに繋ぐ最小の器。
+ * reflection は終端（action なし）。
+ */
+const ARC_NARRATIVE: Partial<
+  Record<GamePhase, { readonly text: string; readonly action?: string }>
+> = {
+  deciding: { text: '30日が、すぎました。\nこの子とのこれからを、決めるとき。', action: '決める' },
+  ending: { text: 'あなたは、決めた。', action: 'つづける' },
+  epilogue: { text: '——その後の、しずかな時間。', action: 'つづける' },
+  reflection: { text: 'この30日を、ふりかえる。' },
+};
+
 export function App({ runtime, initialView }: { runtime: GameRuntime; initialView: AppView }) {
   const [view, setView] = useState<AppView>(initialView);
 
@@ -54,6 +68,40 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
     runtime.save(); // 介入は永続状態（空腹）を変える → チェックポイント保存（B4 §9.4）
     refresh();
   };
+  const onProceed = () => {
+    runtime.advancePhase(); // 結末アークを1段進める（EP-3.01）
+    runtime.save();
+    refresh();
+  };
+
+  // 結末アーク（deciding/ending/epilogue/reflection）は静かな語りの画面を出す（構図固定・Pillar 6）。
+  const arc = ARC_NARRATIVE[view.gamePhase];
+  if (arc) {
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'grid',
+          placeItems: 'center',
+          color: '#4a4a4a',
+          fontFamily: 'system-ui, sans-serif',
+        }}
+      >
+        <div style={{ textAlign: 'center', lineHeight: 2, maxWidth: '28rem', padding: '0 1rem' }}>
+          <p aria-label="結末" style={{ fontSize: '1.15rem', margin: 0, whiteSpace: 'pre-line' }}>
+            {arc.text}
+          </p>
+          {arc.action !== undefined && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <button type="button" style={buttonStyle} onClick={onProceed}>
+                {arc.action}
+              </button>
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   const ended = view.phase === 'ended';
 

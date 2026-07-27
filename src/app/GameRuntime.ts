@@ -300,9 +300,40 @@ export class GameRuntime {
       // 推移後の Segment を観測し、履歴へ一度だけ追記（Player Knowledge の再生成元・G-2）。
       this.#recordObservation(state);
     }
+    // トライアル終了（30日消化）で去就の決定フェーズへ（playing のときのみ・EP-3.01 物語アーク）。
+    if (state.phase === 'ended' && this.#store.getGamePhase() === 'playing') {
+      this.#store.transitionGamePhase('deciding');
+    }
     // 行動枠を新 Segment 分にリセット（未使用枠は繰り越さない・B2 §4）。
     this.#actionSlots = this.#slotsForSegment(state.segment);
     return state;
+  }
+
+  /**
+   * トライアルを開始する（booting→playing・EP-3.01 物語アークの入口）。
+   * title/preparing は内部遷移（実画面・オンボーディングは OI-4）。既に開始済みなら何もしない（冪等）。
+   */
+  begin(): void {
+    if (this.#store.getGamePhase() !== 'booting') return;
+    for (const to of ['loading', 'title', 'preparing', 'playing'] as const) {
+      this.#store.transitionGamePhase(to);
+    }
+  }
+
+  /**
+   * 結末アークを1段進める（deciding→ending→epilogue→reflection・EP-3.01）。UI の確認操作から呼ぶ。
+   * ⚠️ 去就の決定の中身・結末の意味づけ・演出は監修/OI-4（ここは遷移の機構のみ・プレースホルダ）。
+   * 進行不能なフェーズでは何もしない（現フェーズを返す）。
+   */
+  advancePhase(): GamePhase {
+    const next: Partial<Record<GamePhase, GamePhase>> = {
+      deciding: 'ending',
+      ending: 'epilogue',
+      epilogue: 'reflection',
+    };
+    const to = next[this.#store.getGamePhase()];
+    if (to) this.#store.transitionGamePhase(to);
+    return this.#store.getGamePhase();
   }
 
   /**
