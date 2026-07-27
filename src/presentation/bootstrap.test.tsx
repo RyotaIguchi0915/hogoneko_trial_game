@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { bootstrap } from './bootstrap';
+import { bootstrap, computeView } from './bootstrap';
 import { App } from './App';
 import { createLocalStorageSaveStorage } from './localStorageStorage';
 
@@ -86,6 +86,23 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
 
     const second = bootstrap({ storage, clock: fixedClock, seed: 999 });
     expect(second.view.knowledgeNotes.length).toBeGreaterThan(0);
+  });
+
+  it('30日を終えると決定→結末アークの画面になる（EP-3.01）', () => {
+    const { runtime } = bootstrap({
+      storage: createLocalStorageSaveStorage(),
+      clock: fixedClock,
+      seed: 1,
+    });
+    // 30日消化（runtime を直接進める）→ playing→deciding。
+    for (let i = 0; i < 200 && runtime.reader.getProgress().phase === 'running'; i += 1) {
+      runtime.advanceSegment();
+    }
+    render(<App runtime={runtime} initialView={computeView(runtime, 'ok')} />);
+    // deciding の語り＋「決める」→ ending の語り＋「つづける」。
+    expect(screen.getByText('決める')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('決める'));
+    expect(screen.getByText('つづける')).toBeInTheDocument();
   });
 
   it('リロード（同一 localStorage で再 bootstrap）で進行が復元される', () => {

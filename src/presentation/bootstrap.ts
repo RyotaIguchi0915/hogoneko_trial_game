@@ -53,6 +53,7 @@ export function computeView(
     segment: progress.segment,
     segmentsPerDay: DEFAULT_TRIAL_CONFIG.segmentsPerDay,
     phase: progress.phase,
+    gamePhase: runtime.reader.getGamePhase(),
     observations,
     catSprite,
     actionSlots: runtime.reader.getActionSlots(),
@@ -68,5 +69,8 @@ export function bootstrap(deps: BootstrapDeps): BootstrapResult {
     ...(deps.buildVersion !== undefined ? { buildVersion: deps.buildVersion } : {}),
   });
   const restoreStatus = runtime.reader.getRestoreStatus();
+  // トライアルを開始する（booting→playing・EP-3.01）。旧セーブ（booting のまま）も再開時に開始する。
+  // ⚠️ title/preparing のオンボーディング画面は OI-4（本 MVP は内部遷移で playing まで進める）。
+  runtime.begin();
   return { runtime, view: computeView(runtime, restoreStatus) };
 }

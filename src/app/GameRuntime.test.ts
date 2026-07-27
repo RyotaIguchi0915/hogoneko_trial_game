@@ -333,3 +333,65 @@ describe('GameRuntime — イベント発火（EP-2.09 発火 runtime）', () =>
     rt2.dispose();
   });
 });
+
+describe('GameRuntime — トライアル物語アーク（EP-3.01）', () => {
+  /** phase='ended' まで進める（安全上限つき）。 */
+  const playToEnd = (rt: GameRuntime, cap = 400) => {
+    let n = 0;
+    while (rt.reader.getProgress().phase === 'running' && n < cap) {
+      rt.advanceSegment();
+      n += 1;
+    }
+  };
+
+  it('begin() で booting→playing（title/preparing を経る内部遷移）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
+    expect(rt.reader.getGamePhase()).toBe('booting');
+    rt.begin();
+    expect(rt.reader.getGamePhase()).toBe('playing');
+    rt.begin(); // 冪等
+    expect(rt.reader.getGamePhase()).toBe('playing');
+    rt.dispose();
+  });
+
+  it('30日を消化すると playing→deciding へ自動遷移する', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
+    rt.begin();
+    playToEnd(rt);
+    expect(rt.reader.getProgress().phase).toBe('ended');
+    expect(rt.reader.getGamePhase()).toBe('deciding');
+    rt.dispose();
+  });
+
+  it('advancePhase() で deciding→ending→epilogue→reflection と進み、reflection で止まる', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
+    rt.begin();
+    playToEnd(rt); // deciding
+    expect(rt.advancePhase()).toBe('ending');
+    expect(rt.advancePhase()).toBe('epilogue');
+    expect(rt.advancePhase()).toBe('reflection');
+    expect(rt.advancePhase()).toBe('reflection'); // 終端（それ以上進まない）
+    rt.dispose();
+  });
+
+  it('begin() を呼ばなければ 30日消化でも deciding に遷移しない（アークは opt-in）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
+    playToEnd(rt); // begin() 未呼び出し → gamePhase は booting のまま
+    expect(rt.reader.getProgress().phase).toBe('ended');
+    expect(rt.reader.getGamePhase()).toBe('booting'); // 不正遷移せず据え置き
+    rt.dispose();
+  });
+
+  it('アーク途中（deciding）のフェーズがセーブ往復で復元される', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 1 });
+    rt1.begin();
+    playToEnd(rt1); // deciding
+    rt1.save();
+    rt1.dispose();
+
+    const rt2 = GameRuntime.create({ storage, clock, seed: 1 });
+    expect(rt2.reader.getGamePhase()).toBe('deciding'); // 復元後も deciding（begin は冪等で戻さない）
+    rt2.dispose();
+  });
+});
