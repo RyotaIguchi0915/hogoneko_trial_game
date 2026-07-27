@@ -48,11 +48,6 @@ const COLORS = {
   text: '#4a4a4a',
 } as const;
 
-/** 猫が「隠れている／見当たらない」観察かどうか（描画上、猫を出すか否かの判断）。 */
-function catIsVisible(view: AppView): boolean {
-  return view.observations.length > 0 && !view.observations.includes('姿が見当たらない');
-}
-
 /**
  * 論理サイズ (width×height, CSS px) に対してシーンを描く。
  * DPR スケールは呼び出し側（Scene.tsx）が ctx に適用済みである前提。
@@ -91,15 +86,16 @@ export function drawScene(
   ctx.fillStyle = COLORS.furniture;
   ctx.fillRect(boxX, boxY, boxW, boxH);
 
-  // 猫: 観察可能なときだけ、部屋の中央にそっと置く。
-  //   「姿が見当たらない」ときは描かない（隠れている）。位置は Cat AI の location 未実装のため暫定中央。
-  //   スプライト（絵）があれば drawImage、無ければ楕円プレースホルダにフォールバック。
-  if (catIsVisible(view)) {
+  // 猫: 観察可能な姿勢（catSprite）があるときだけ、部屋の中央にそっと置く。
+  //   catSprite=null（隠れ/不在）なら描かない。位置は Cat の location 未実装のため暫定中央。
+  //   対応スプライト画像が読込済みなら drawImage、未読込なら楕円プレースホルダにフォールバック。
+  if (view.catSprite) {
     const cx = roomX + roomW * 0.42;
     const cy = roomY + roomH * 0.5;
-    if (sprites.cat) {
+    const image = sprites[view.catSprite];
+    if (image) {
       const size = Math.min(roomW, roomH) * 0.42;
-      ctx.drawImage(sprites.cat, cx - size / 2, cy - size / 2, size, size);
+      ctx.drawImage(image, cx - size / 2, cy - size / 2, size, size);
     } else {
       ctx.fillStyle = COLORS.cat;
       ctx.beginPath();

@@ -45,6 +45,7 @@ describe('EP-14 Bootstrap smoke（localStorage + DOM）', () => {
           segmentsPerDay: 6,
           phase: 'running',
           observations: [],
+          catSprite: null,
         }}
       />,
     );
