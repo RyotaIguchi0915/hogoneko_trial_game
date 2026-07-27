@@ -1,4 +1,5 @@
 import type { CatState, Behavior } from '@core/state/catState';
+import type { Trace } from '@core/state/trace';
 import type { Phenomenon } from './Phenomenon';
 
 /**
@@ -29,9 +30,26 @@ const BEHAVIOR_TO_DESCRIPTOR: Readonly<Record<Behavior, string>> = {
   grooming: 'phenomenon.self_grooming',
 };
 
+/** 痕跡種別 → descriptor（`phenomenon.<kind>` の 1:1・B4 P-02）。数値は介在しない。 */
+function traceDescriptor(kind: Trace['kind']): string {
+  return `phenomenon.${kind}`;
+}
+
+/** 産出しうる全痕跡種別（GATEWAY_DESCRIPTORS の網羅・語彙定義の検証用）。 */
+const TRACE_KINDS: readonly Trace['kind'][] = [
+  'shed_fur',
+  'moved_object',
+  'food_reduced',
+  'warm_hollow',
+];
+
 /** Gateway が産出しうる全 descriptor（未定義語彙の動的生成禁止の検証に使う・B4 P-02）。 */
 export const GATEWAY_DESCRIPTORS: readonly string[] = Array.from(
-  new Set([...Object.values(BEHAVIOR_TO_DESCRIPTOR), 'phenomenon.out_of_sight']),
+  new Set([
+    ...Object.values(BEHAVIOR_TO_DESCRIPTOR),
+    'phenomenon.out_of_sight',
+    ...TRACE_KINDS.map(traceDescriptor),
+  ]),
 );
 
 /**
@@ -51,4 +69,17 @@ export function toPhenomena(
   return [
     { subject: 'cat', descriptor: BEHAVIOR_TO_DESCRIPTOR[cat.behavior], observability: true },
   ];
+}
+
+/**
+ * 痕跡（不在 Segment の産物）→ 現象へ変換する（純粋・EP-2.06）。
+ * 在室で「発見」された痕跡を、数値を持たない Phenomenon（subject:'trace'）として返す。
+ * ⚠️ 真実数値は露出しない（種別のみ）。表示語への解決は L4（Localization）。
+ */
+export function tracesToPhenomena(traces: readonly Trace[]): readonly Phenomenon[] {
+  return traces.map((t) => ({
+    subject: 'trace',
+    descriptor: traceDescriptor(t.kind),
+    observability: true,
+  }));
 }

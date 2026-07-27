@@ -1,9 +1,26 @@
 import { describe, it, expect } from 'vitest';
 import { GameRuntime } from './GameRuntime';
-import { createMemorySaveStorage } from '@core/index';
+import {
+  createMemorySaveStorage,
+  serialize,
+  type GameSnapshot,
+  type SaveStorage,
+} from '@core/index';
 import { initialCatState } from '@core/state/catState';
 
 const clock = () => 1000;
+
+/** 指定の進行・痕跡を持つセーブを storage に仕込む（痕跡ライフサイクルを決定論的に検証するため）。 */
+function seedSave(storage: SaveStorage, over: Partial<GameSnapshot> = {}): void {
+  const snap: GameSnapshot = {
+    determinism: { seed: 1, streamState: 1 },
+    progress: { day: 1, segment: 2, phase: 'running' }, // Seg2=昼=不在（次の advance で Seg3=在室）
+    gamePhase: 'playing',
+    simulation: { cat: initialCatState() },
+    ...over,
+  };
+  storage.write('hogoneko/save/v1', JSON.stringify(serialize(snap, 1, 'x')));
+}
 
 describe('GameRuntime — 新規起動', () => {
   it('セーブが無ければ Day1/Segment0・booting から始まる', () => {
@@ -195,5 +212,77 @@ describe('GameRuntime — 観察履歴の蓄積・復元（EP-2.07 / B4 §9.2 / 
     rt2.advanceSegment();
     expect(rt2.reader.getObservationLog()).toHaveLength(3);
     rt2.dispose();
+  });
+});
+
+describe('GameRuntime — 痕跡の発見（EP-2.06 / B2 §3.2）', () => {
+  const traceSubjects = (rt: GameRuntime) =>
+    rt.reader.getObservation().filter((p) => p.subject === 'trace');
+
+  it('不在中は痕跡が見えない（自分がいないので発見できない）', () => {
+    const storage = createMemorySaveStorage();
+    seedSave(storage, { traces: [{ kind: 'shed_fur' }] }); // Seg2=不在・痕跡あり
+    const rt = GameRuntime.create({ storage, clock, seed: 1 });
+    expect(rt.reader.getProgress().segment).toBe(2);
+    expect(traceSubjects(rt)).toEqual([]); // 不在なので痕跡は出さない（out_of_sight のみ）
+    expect(rt.reader.getObservation()[0]?.descriptor).toBe('phenomenon.out_of_sight');
+    rt.dispose();
+  });
+
+  it('在室で戻ると痕跡を発見し、観察スナップショットと履歴の双方に現れる', () => {
+    const storage = createMemorySaveStorage();
+    seedSave(storage, { traces: [{ kind: 'shed_fur' }, { kind: 'food_reduced' }] });
+    const rt = GameRuntime.create({ storage, clock, seed: 1 });
+    rt.advanceSegment(); // Seg2 → Seg3（在室）で発見
+
+    const traces = traceSubjects(rt);
+    expect(traces.map((p) => p.descriptor)).toEqual([
+      'phenomenon.shed_fur',
+      'phenomenon.food_reduced',
+    ]);
+    // 履歴にも痕跡が記録される（Player Knowledge の元）。
+    const logged = rt.reader.getObservationLog().filter((e) => e.subject === 'trace');
+    expect(logged.map((e) => e.descriptor)).toEqual([
+      'phenomenon.shed_fur',
+      'phenomenon.food_reduced',
+    ]);
+    rt.dispose();
+  });
+
+  it('発見した痕跡は次の在室 Segment で重複記録されない（発見済みでクリア）', () => {
+    const storage = createMemorySaveStorage();
+    seedSave(storage, { traces: [{ kind: 'shed_fur' }] });
+    const rt = GameRuntime.create({ storage, clock, seed: 1 });
+    rt.advanceSegment(); // Seg3（在室）で発見・記録
+    rt.advanceSegment(); // Seg4（在室）: pending は空 → 痕跡なし
+    expect(traceSubjects(rt)).toEqual([]);
+    const tracesInLog = rt.reader.getObservationLog().filter((e) => e.subject === 'trace');
+    expect(tracesInLog).toHaveLength(1); // 1回だけ記録
+    rt.dispose();
+  });
+
+  it('発見後に保存すると未発見痕跡は空になる（往復で消費が保たれる）', () => {
+    const storage = createMemorySaveStorage();
+    seedSave(storage, { traces: [{ kind: 'shed_fur' }] });
+    const rt1 = GameRuntime.create({ storage, clock, seed: 1 });
+    rt1.advanceSegment(); // Seg3 在室で発見 → pending クリア
+    rt1.save();
+    rt1.dispose();
+
+    const rt2 = GameRuntime.create({ storage, clock, seed: 1 });
+    // 復元直後（Seg3 在室）: 既に発見済みなので痕跡は残っていない。
+    expect(rt2.reader.getObservation().filter((p) => p.subject === 'trace')).toEqual([]);
+    rt2.dispose();
+  });
+
+  it('痕跡生成を含む進行が同一シードで再現する（決定論・Success 条件）', () => {
+    const run = () => {
+      const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 314 });
+      for (let i = 0; i < 12; i++) rt.advanceSegment(); // 2日分
+      const log = rt.reader.getObservationLog();
+      rt.dispose();
+      return log;
+    };
+    expect(run()).toEqual(run());
   });
 });

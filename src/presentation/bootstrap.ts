@@ -36,8 +36,10 @@ export function computeView(
   runtime: GameRuntime,
   restoreStatus: AppView['restoreStatus'],
 ): AppView {
-  const phenomena = runtime.observe();
+  // 現 Segment の安定スナップショット（在室で戻った時は痕跡も含む・pending クリアの影響を受けない・EP-2.06）。
+  const phenomena = runtime.reader.getObservation();
   const observations = phenomena.map((p) => localization.resolve(p.descriptor));
+  // スプライトは猫の様子（先頭）から。痕跡は描画では文字（観察）で示し、猫の姿勢は変えない。
   const catSprite = spriteForDescriptor(phenomena[0]?.descriptor);
   const progress = runtime.reader.getProgress();
   // Player Knowledge を観察履歴から再生成（保存しない・G-2）。回数は「観測回数」で Cat State ではない（I-1）。
