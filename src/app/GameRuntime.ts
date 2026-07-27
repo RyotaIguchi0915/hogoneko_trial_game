@@ -20,6 +20,8 @@ import {
   type SaveStorage,
   type GameSnapshot,
   type TruthReader,
+  appendObservations,
+  type ObservationEntry,
 } from '@core/index';
 import { initialCatState } from '@core/state/catState';
 import { getSimulationStateAccess, type SimulationStateAccess } from '@core/state/simulationAccess';
@@ -56,6 +58,11 @@ export interface RuntimeReader {
   getRestoreStatus(): RestoreStatus;
   /** 現 Segment に残る行動枠（B2 §4）。不在 Segment では 0。 */
   getActionSlots(): number;
+  /**
+   * 観察履歴（Player Knowledge の再生成元・G-2）。Phenomenon 由来の記録のみで、数値・Cat State を含まない。
+   * ⚠️ 返すのは「記録された事実」であって解釈ではない。理解の再生成は L3 Player Knowledge が担う。
+   */
+  getObservationLog(): readonly ObservationEntry[];
 }
 
 export interface GameRuntimeDeps {
@@ -82,6 +89,8 @@ export class GameRuntime {
   readonly #restoreStatus: RestoreStatus;
   /** 現 Segment の残り行動枠（transient・保存しない・B4 §9.2）。 */
   #actionSlots: number;
+  /** 観察履歴（Persisted・追記のみ・B4 §9.2）。復元元があれば引き継ぐ。 */
+  #observationLog: readonly ObservationEntry[];
 
   private constructor(deps: GameRuntimeDeps) {
     const config = deps.config ?? DEFAULT_TRIAL_CONFIG;
@@ -101,11 +110,14 @@ export class GameRuntime {
       this.#rng = restoreRng(snapshot.determinism.seed, snapshot.determinism.streamState);
       this.#time = new TimeSystem(this.#bus, config, snapshot.progress);
       this.#store = new StateStore(this.#bus, snapshot.gamePhase, snapshot.simulation.cat);
+      // 旧セーブに observationLog が無ければ [] で補完（B4 §9.6 フィールド追加）。
+      this.#observationLog = snapshot.observationLog ?? [];
     } else {
       this.#seed = deps.seed;
       this.#rng = createRng(deps.seed);
       this.#time = new TimeSystem(this.#bus, config, initialTime());
       this.#store = new StateStore(this.#bus, 'booting', initialCatState());
+      this.#observationLog = [];
     }
 
     this.#catAccess = getSimulationStateAccess(this.#store);
@@ -139,6 +151,7 @@ export class GameRuntime {
       getProgress: () => this.#time.now(),
       getRestoreStatus: () => this.#restoreStatus,
       getActionSlots: () => this.#actionSlots,
+      getObservationLog: () => this.#observationLog,
     };
   }
 
@@ -159,7 +172,23 @@ export class GameRuntime {
       progress: this.#time.now(),
       gamePhase: this.#store.getGamePhase(),
       simulation: { cat: this.#catAccess.getCatState() },
+      observationLog: this.#observationLog,
     };
+  }
+
+  /**
+   * その Segment の観測を履歴へ追記する（Phenomenon → 素の記録・追記のみ）。
+   * ⚠️ Segment 進行時に一度だけ呼ぶ（描画のたびに呼ばない）。再描画/リロードで重複追記しないため、
+   *    ここでのみ蓄積し、observe()（描画用）とは分離する（G-2: 保存するのは履歴だけ）。
+   */
+  #recordObservation(state: TimeState): void {
+    const entries: readonly ObservationEntry[] = this.observe().map((p) => ({
+      day: state.day,
+      segment: state.segment,
+      subject: p.subject,
+      descriptor: p.descriptor,
+    }));
+    this.#observationLog = appendObservations(this.#observationLog, entries);
   }
 
   /**
@@ -178,6 +207,8 @@ export class GameRuntime {
         // 行動選択の揺らぎは用途別ストリームで（B5 §8.4）。root を消費せず fork（保存位置に非依存・決定論）。
         behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
       });
+      // 推移後の Segment を観測し、履歴へ一度だけ追記（Player Knowledge の再生成元・G-2）。
+      this.#recordObservation(state);
     }
     // 行動枠を新 Segment 分にリセット（未使用枠は繰り越さない・B2 §4）。
     this.#actionSlots = this.#slotsForSegment(state.segment);

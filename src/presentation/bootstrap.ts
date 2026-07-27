@@ -2,6 +2,7 @@ import { DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock } from '@core/index'
 import { Localization } from '@data/index';
 import { GameRuntime } from '@app/index';
 import { LOCALES } from '@content/locales';
+import { derivePlayerKnowledge } from '@perception/index';
 import { spriteForDescriptor } from './sprites';
 import type { AppView } from './appView';
 
@@ -39,6 +40,11 @@ export function computeView(
   const observations = phenomena.map((p) => localization.resolve(p.descriptor));
   const catSprite = spriteForDescriptor(phenomena[0]?.descriptor);
   const progress = runtime.reader.getProgress();
+  // Player Knowledge を観察履歴から再生成（保存しない・G-2）。回数は「観測回数」で Cat State ではない（I-1）。
+  const knowledge = derivePlayerKnowledge(runtime.reader.getObservationLog());
+  const knowledgeNotes = knowledge.observed.map(
+    (o) => `${localization.resolve(o.descriptor)}${o.count > 1 ? ` ×${o.count}` : ''}`,
+  );
   return {
     restoreStatus,
     day: progress.day,
@@ -48,6 +54,7 @@ export function computeView(
     observations,
     catSprite,
     actionSlots: runtime.reader.getActionSlots(),
+    knowledgeNotes,
   };
 }
 

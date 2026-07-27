@@ -36,6 +36,9 @@ export type { CatState } from './state/catState';
 // ⚠️ Needs/Affect/Relationship/Behavior の詳細型・initialCatState は L4 向けバレルに出さない。
 //    L2 Simulation は '@core/state/catState' を直接参照する（憲章 I-1・値を L4 に露出しない）。
 
+// 観察履歴（Persisted・Player Knowledge の再生成元）。数値を含まない Phenomenon 由来の記録（G-2）。
+export { appendObservations, type ObservationEntry } from './state/observation';
+
 // --- Save（B4 ⑨ / EP-08） ---
 // ⚠️ storage の具体（localStorage 等）は L4 が実装し、注入する。
 export { SaveSystem, SaveEvents } from './save/SaveSystem';

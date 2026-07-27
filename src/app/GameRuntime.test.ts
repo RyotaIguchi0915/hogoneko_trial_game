@@ -159,3 +159,41 @@ describe('GameRuntime — 介入（餌やり）と行動枠（EP-2.08 / B2 §4�
     rt.dispose();
   });
 });
+
+describe('GameRuntime — 観察履歴の蓄積・復元（EP-2.07 / B4 §9.2 / G-2）', () => {
+  it('起動直後は履歴が空（まだ Segment を観測していない）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    expect(rt.reader.getObservationLog()).toEqual([]);
+    rt.dispose();
+  });
+
+  it('advanceSegment ごとに観測が1件だけ追記される（day/segment を伴う）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.advanceSegment(); // Seg1 を観測
+    rt.advanceSegment(); // Seg2 を観測
+    const log = rt.reader.getObservationLog();
+    expect(log).toHaveLength(2);
+    expect(log[0]).toMatchObject({ day: 1, segment: 1 });
+    expect(log[1]).toMatchObject({ day: 1, segment: 2 });
+    rt.dispose();
+  });
+
+  it('観察履歴がセーブ往復で保たれ、リロードで重複追記しない', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 42 });
+    rt1.advanceSegment();
+    rt1.advanceSegment();
+    const before = rt1.reader.getObservationLog();
+    expect(before).toHaveLength(2);
+    rt1.save();
+    rt1.dispose();
+
+    // 再起動しただけでは履歴は増えない（構築時に自動観測しない）。
+    const rt2 = GameRuntime.create({ storage, clock, seed: 42 });
+    expect(rt2.reader.getObservationLog()).toEqual(before);
+    // さらに進めると続きから積まれる（追記のみ）。
+    rt2.advanceSegment();
+    expect(rt2.reader.getObservationLog()).toHaveLength(3);
+    rt2.dispose();
+  });
+});

@@ -117,6 +117,21 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
             次へ
           </button>
         </div>
+
+        {/* 観察ノート（Player Knowledge・EP-2.07）。これまで見た事実だけを静かに並べる（解釈しない・B7）。 */}
+        {view.knowledgeNotes.length > 0 && (
+          <div
+            aria-label="観察ノート"
+            style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '1.5rem', lineHeight: 1.9 }}
+          >
+            <p style={{ margin: 0, opacity: 0.8 }}>観察ノート</p>
+            {view.knowledgeNotes.map((note, i) => (
+              <p key={i} style={{ margin: 0 }}>
+                {note}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );

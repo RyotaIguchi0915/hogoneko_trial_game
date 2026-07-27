@@ -19,4 +19,9 @@ export interface AppView {
   readonly catSprite: SpriteKey | null;
   /** 現 Segment に残る行動枠（B2 §4）。介入 UI の可否に使う。0 なら介入不可（不在 or 使い切り）。 */
   readonly actionSlots: number;
+  /**
+   * 観察ノート（これまで見た事実・頻度順・ローカライズ済み・EP-2.07）。
+   * Player Knowledge（観察履歴から再生成）の静かな提示。数値は「観測回数」であり Cat State ではない（I-1）。
+   */
+  readonly knowledgeNotes: readonly string[];
 }

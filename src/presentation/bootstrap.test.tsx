@@ -66,6 +66,28 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     expect(screen.getByLabelText('餌をやる（残り1）')).toBeInTheDocument(); // 枠が1減る
   });
 
+  it('「次へ」で観察が観察ノート（Player Knowledge）に積まれる（EP-2.07）', () => {
+    const { runtime, view } = bootstrap({
+      storage: createLocalStorageSaveStorage(),
+      clock: fixedClock,
+      seed: 12345,
+    });
+    render(<App runtime={runtime} initialView={view} />);
+    expect(screen.queryByLabelText('観察ノート')).toBeNull(); // 初期は履歴なし
+    fireEvent.click(screen.getByText('次へ')); // Seg1 を観測 → 履歴に1件
+    expect(screen.getByLabelText('観察ノート')).toBeInTheDocument();
+  });
+
+  it('リロードで観察履歴（Player Knowledge の元）も復元される（EP-2.07）', () => {
+    const storage = createLocalStorageSaveStorage();
+    const first = bootstrap({ storage, clock: fixedClock, seed: 12345 });
+    first.runtime.advanceSegment();
+    first.runtime.save();
+
+    const second = bootstrap({ storage, clock: fixedClock, seed: 999 });
+    expect(second.view.knowledgeNotes.length).toBeGreaterThan(0);
+  });
+
   it('リロード（同一 localStorage で再 bootstrap）で進行が復元される', () => {
     const storage = createLocalStorageSaveStorage();
     const first = bootstrap({ storage, clock: fixedClock, seed: 12345 });

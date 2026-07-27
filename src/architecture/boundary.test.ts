@@ -8,9 +8,8 @@ import { ESLint } from 'eslint';
  * EP-03 ではその場で実証したが、ここでは ESLint の Node API で違反コード片を lint し、
  * 期待するルールが発火することを CI が毎回検証する。これが緩めば全ての憲章保証が崩れる。
  *
- * ⚠️ Sprint 2 で追加する検査（Perception Gateway 以外の L2→L3 出力 / Phenomenon への
- *    数値フィールド / Player Knowledge→Simulation の G-2）は、対象の層が生まれてから
- *    本スイートに追加する。現時点で構造的に強制できる境界のみを網羅している。
+ * ⚠️ Player Knowledge→Simulation の G-2 は本スイートで強制済み（下記ケース）。
+ *    残る検査（Phenomenon への数値フィールド追加の検出）は対象が揃い次第追加する。
  */
 
 interface ViolationCase {
@@ -32,6 +31,12 @@ const CASES: readonly ViolationCase[] = [
     name: '🔴 L4→simulationAccess は憲章 I-1 違反',
     filePath: 'src/presentation/_violation.ts',
     code: `import { getSimulationStateAccess } from '../core/state/simulationAccess';\nexport const a = getSimulationStateAccess;\n`,
+    rule: 'import/no-restricted-paths',
+  },
+  {
+    name: '🔴 L3 Player Knowledge → L2 Simulation は G-2 違反（真実に到達しない）',
+    filePath: 'src/perception/_violation.ts',
+    code: `import { feedCat } from '../simulation/index';\nexport const f = feedCat;\n`,
     rule: 'import/no-restricted-paths',
   },
   {
