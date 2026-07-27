@@ -151,6 +151,32 @@ describe('SaveData — validateStructure', () => {
     const broken = serialize(sampleSnapshot({ traces: 'nope' as unknown as readonly [] }), 1, 'x');
     expect(validateStructure(broken).errors.join()).toMatch(/traces is invalid/);
   });
+
+  it('firedEventIds / envAdjust 欠落は受理し、配列/数値2項なら受理・不正は拒否（EP-2.09 後方互換）', () => {
+    expect(validateStructure(serialize(sampleSnapshot(), 1, 'x')).valid).toBe(true); // 欠落OK
+    const withEvent = serialize(
+      sampleSnapshot({ firedEventIds: ['e1'], envAdjust: { security: 0.1, comfort: -0.2 } }),
+      1,
+      'x',
+    );
+    expect(validateStructure(withEvent).valid).toBe(true);
+
+    const badIds = serialize(
+      sampleSnapshot({ firedEventIds: 'nope' as unknown as readonly string[] }),
+      1,
+      'x',
+    );
+    expect(validateStructure(badIds).errors.join()).toMatch(/firedEventIds is invalid/);
+
+    const badAdj = serialize(
+      sampleSnapshot({
+        envAdjust: { security: 'x' } as unknown as { security: number; comfort: number },
+      }),
+      1,
+      'x',
+    );
+    expect(validateStructure(badAdj).errors.join()).toMatch(/envAdjust is invalid/);
+  });
 });
 
 describe('SaveData — migrate', () => {
