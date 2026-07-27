@@ -156,6 +156,8 @@ export class GameRuntime {
         segment: state.segment,
         inRoom: isInRoomSegment(state.segment),
         environment: this.#env.defaultEnvironment(),
+        // 行動選択の揺らぎは用途別ストリームで（B5 §8.4）。root を消費せず fork（保存位置に非依存・決定論）。
+        behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
       });
     }
     return state;

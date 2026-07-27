@@ -1,3 +1,4 @@
+import type { Rng } from '@core/index';
 import type { CatState } from '@core/state/catState';
 import {
   raiseNeedsPressure,
@@ -8,6 +9,7 @@ import {
   updateRelationship,
   updateSafety,
 } from './catDynamics';
+import { selectBehavior } from './catAI';
 
 /**
  * Segment Update — 1 Segment の完全計算順序（L2 Simulation / B5 §8.1）
@@ -39,6 +41,8 @@ export interface SegmentContext {
   readonly inRoom: boolean;
   /** 環境入力。省略時は中立既定（EP-2.03 で本供給）。 */
   readonly environment?: CatEnvironmentInput;
+  /** 行動選択の behavior ストリーム RNG（B5 §8.4）。省略時は argmax（EP-2.02）。 */
+  readonly behaviorRng?: Rng;
 }
 
 const NEUTRAL_ENV: CatEnvironmentInput = { zoneSecurity: 0.5, zoneComfort: 0.5 };
@@ -72,12 +76,14 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
   const safety = updateSafety(affect, relationship, env.zoneSecurity);
   const needs = { ...needsAfterPressure, safety };
 
-  // step12（ゲート）・step14-17（Cat AI）は EP-2.02 の担当。behavior はここでは据え置く。
+  // step14-15: Cat AI が更新後の状態から行動を選択（B6 / §8.1）。直接書き換えず新状態に載せる。
+  const behavior = selectBehavior({ needs, affect, relationship }, ctx.behaviorRng);
+
   return {
     arrived: state.arrived,
     needs,
     affect,
     relationship,
-    behavior: state.behavior,
+    behavior,
   };
 }
