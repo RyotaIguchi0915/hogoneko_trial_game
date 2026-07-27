@@ -11,6 +11,7 @@ import {
   applyNeedSatisfaction,
 } from './catDynamics';
 import { selectBehavior } from './catAI';
+import { selectZone, type ZoneChoice } from './zoneSelection';
 
 /**
  * Segment Update — 1 Segment の完全計算順序（L2 Simulation / B5 §8.1）
@@ -40,8 +41,10 @@ export interface SegmentContext {
   readonly segment: number;
   /** 在室 Segment か（B2 §3.2）。不在は痕跡のみ（EP-2.06）。 */
   readonly inRoom: boolean;
-  /** 環境入力。省略時は中立既定（EP-2.03 で本供給）。 */
+  /** 環境入力（＝現在地 Zone の導出環境）。省略時は中立既定（EP-2.03/3.02 で本供給）。 */
   readonly environment?: CatEnvironmentInput;
+  /** ゾーン選択の候補（全 Zone の導出環境・EP-3.02）。省略時は移動しない（現在地据え置き）。 */
+  readonly zones?: readonly ZoneChoice[];
   /** 行動選択の behavior ストリーム RNG（B5 §8.4）。省略時は argmax（EP-2.02）。 */
   readonly behaviorRng?: Rng;
 }
@@ -80,6 +83,12 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
   // step14-15: Cat AI が更新後の状態から行動を選択（B6 / §8.1）。直接書き換えず新状態に載せる。
   const behavior = selectBehavior({ needs, affect, relationship }, ctx.behaviorRng);
 
+  // step16: 移動＝選んだ行動の遂行として次の現在地 Zone を決める（B5 §8.1 / B6 §2.7・B10 §5.2）。
+  //   環境更新→安全→行動→移動 の順序を厳守（§8.2）。候補未供給時は現在地据え置き。
+  const currentZone = ctx.zones
+    ? selectZone(ctx.zones, { behavior, prevZone: state.currentZone }, ctx.behaviorRng)
+    : state.currentZone;
+
   // step17: 行動による Need 充足（eating→hunger 低下）。選択した行動の結果を反映。
   const satisfiedNeeds = applyNeedSatisfaction(needs, behavior);
 
@@ -89,5 +98,6 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
     affect,
     relationship,
     behavior,
+    currentZone,
   };
 }

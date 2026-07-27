@@ -177,6 +177,18 @@ describe('SaveData — validateStructure', () => {
     );
     expect(validateStructure(badAdj).errors.join()).toMatch(/envAdjust is invalid/);
   });
+
+  it('cat.currentZone 欠落を検出する（v3・EP-3.02）', () => {
+    const { currentZone: _omit, ...catWithoutZone } = initialCatState();
+    const save = serialize(
+      { ...sampleSnapshot(), simulation: { cat: catWithoutZone } } as unknown as GameSnapshot,
+      1,
+      'x',
+    );
+    const result = validateStructure(save);
+    expect(result.valid).toBe(false);
+    expect(result.errors.join()).toMatch(/currentZone is invalid/);
+  });
 });
 
 describe('SaveData — migrate', () => {
@@ -222,7 +234,11 @@ describe('SaveData — migrate v1→v2（Sprint1→2 スキーマ移行・EP-2.1
     expect(typeof data.simulation.cat.needs.hunger).toBe('number'); // 補完
     expect(data.observationLog).toEqual([]);
     expect(data.traces).toEqual([]);
-    expect((result.value.meta as Record<string, unknown>).schemaVersion).toBe(2);
+    expect(typeof data.simulation.cat.currentZone).toBe('string'); // v3 で currentZone も補完
+    // v1→v2→v3 と連鎖し、最終は現行版になる。
+    expect((result.value.meta as Record<string, unknown>).schemaVersion).toBe(
+      CURRENT_SCHEMA_VERSION,
+    );
     // 進行など他の元データは保全される。
     expect(data.progress).toEqual({ day: 2, segment: 1, phase: 'running' });
   });
@@ -248,5 +264,46 @@ describe('SaveData — migrate v1→v2（Sprint1→2 スキーマ移行・EP-2.1
     expect(data.simulation.cat.relationship).toEqual({ trust: 0.42, familiarity: 0.37 }); // 保全
     expect(data.observationLog).toHaveLength(1); // 保全
     expect(data.traces).toEqual([{ kind: 'shed_fur' }]); // 保全
+  });
+});
+
+describe('SaveData — migrate v2→v3（currentZone 追加・EP-3.02）', () => {
+  const v2Save = (catOver: Record<string, unknown> = {}) =>
+    ({
+      meta: { schemaVersion: 2, checksum: 'x', savedAt: 1, buildVersion: 'x' },
+      data: {
+        determinism: { seed: 1, streamState: 1 },
+        progress: { day: 3, segment: 1, phase: 'running' },
+        gamePhase: 'playing',
+        simulation: {
+          cat: {
+            arrived: true,
+            needs: { safety: 0.5, hunger: 0.2, elimination: 0.2 },
+            affect: { arousal: 0.3, valence: 0, vigilance: 0.4, stressLoad: 0.2 },
+            relationship: { trust: 0.1, familiarity: 0.1 },
+            behavior: 'hiding',
+            ...catOver,
+          },
+        },
+      },
+    }) as Record<string, unknown>;
+
+  it('currentZone 欠落の v2 セーブに既定 Zone を補い、v3 として構造検証を通る', () => {
+    const result = migrate(v2Save(), 2);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const data = result.value.data as Record<string, any>;
+    expect(data.simulation.cat.currentZone).toBe('zone.refuge'); // 補完
+    expect((result.value.meta as Record<string, unknown>).schemaVersion).toBe(3);
+    expect(validateStructure(result.value).valid).toBe(true);
+  });
+
+  it('既に currentZone がある v2 セーブは保全する', () => {
+    const result = migrate(v2Save({ currentZone: 'zone.vantage' }), 2);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.value.data as Record<string, any>).simulation.cat.currentZone).toBe(
+      'zone.vantage',
+    );
   });
 });

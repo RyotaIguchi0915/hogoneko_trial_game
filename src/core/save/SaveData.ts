@@ -25,8 +25,9 @@ import type { Trace } from '../state/trace';
 /**
  * 現在のスキーマ版。破壊的変更のたびに +1 し、旧版へのマイグレーションを追加する。
  * v1 = Sprint1 骨格（cat={arrived} のみ）。v2 = Sprint2（Cat State 全形 + 観察履歴 + 痕跡）。
+ * v3 = EP-3.02（Cat State に currentZone 追加）。
  */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 /**
  * 保存する元データ（Persisted / B4 §9.2）。
@@ -233,6 +234,7 @@ export function validateStructure(value: unknown): ValidationResult {
     if (!nums(cat.relationship, ['trust', 'familiarity']))
       push('data.simulation.cat.relationship is invalid');
     if (typeof cat.behavior !== 'string') push('data.simulation.cat.behavior is invalid');
+    if (typeof cat.currentZone !== 'string') push('data.simulation.cat.currentZone is invalid');
   }
 
   // 観察履歴・痕跡は任意（旧セーブ後方互換・B4 §9.6）。存在するなら配列であること。
@@ -287,7 +289,8 @@ export const MIGRATIONS: Readonly<
     const sim = (data.simulation ?? {}) as Record<string, unknown>;
     const oldCat = (sim.cat ?? {}) as Record<string, unknown>;
     const base = initialCatState();
-    const cat: CatState = {
+    // v2 形（currentZone は v3 の MIGRATIONS[2] で補完するため、ここでは付けない）。
+    const cat = {
       arrived: typeof oldCat.arrived === 'boolean' ? oldCat.arrived : base.arrived,
       needs: hasNums(oldCat.needs, ['safety', 'hunger', 'elimination'])
         ? (oldCat.needs as CatState['needs'])
@@ -313,6 +316,25 @@ export const MIGRATIONS: Readonly<
         observationLog: Array.isArray(data.observationLog) ? data.observationLog : [],
         traces: Array.isArray(data.traces) ? data.traces : [],
       },
+    };
+  },
+  /**
+   * v2 → v3: Cat State に currentZone を補完する（EP-3.02・B4 §9.6）。
+   * 既に妥当な文字列があれば保全し、無ければ既定 Zone（refuge）で補う。
+   */
+  2: (raw) => {
+    const data = (raw.data ?? {}) as Record<string, unknown>;
+    const sim = (data.simulation ?? {}) as Record<string, unknown>;
+    const oldCat = (sim.cat ?? {}) as Record<string, unknown>;
+    const currentZone =
+      typeof oldCat.currentZone === 'string' && oldCat.currentZone.length > 0
+        ? oldCat.currentZone
+        : initialCatState().currentZone;
+    const meta = (raw.meta ?? {}) as Record<string, unknown>;
+    return {
+      ...raw,
+      meta: { ...meta, schemaVersion: 3 },
+      data: { ...data, simulation: { cat: { ...oldCat, currentZone } } },
     };
   },
 };
