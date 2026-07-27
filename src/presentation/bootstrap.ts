@@ -1,5 +1,7 @@
 import { DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock } from '@core/index';
+import { Localization } from '@data/index';
 import { GameRuntime } from '@app/index';
+import { LOCALES } from '@content/locales';
 import type { AppView } from './App';
 
 /**
@@ -44,6 +46,12 @@ export function bootstrap(deps: BootstrapDeps): BootstrapResult {
     }
   }
 
+  // 観測（EP-2.04 の Gateway 経由）→ 現象語彙をローカライズして表示テキストにする（EP-2.10）。
+  // ⚠️ L4 が受け取るのは数値を持たない Phenomenon のみ。ここで labelKey→表示文字列に解決する。
+  //    現状 descriptor は labelKey と同一 ID（B11 §4 の最小運用）。多段解像度は今後。
+  const localization = new Localization(LOCALES, 'ja');
+  const observations = runtime.observe().map((p) => localization.resolve(p.descriptor));
+
   const progress = runtime.reader.getProgress();
   const view: AppView = {
     restoreStatus,
@@ -51,6 +59,7 @@ export function bootstrap(deps: BootstrapDeps): BootstrapResult {
     segment: progress.segment,
     segmentsPerDay: DEFAULT_TRIAL_CONFIG.segmentsPerDay,
     phase: progress.phase,
+    observations,
   };
 
   return { runtime, view };

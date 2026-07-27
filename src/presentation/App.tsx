@@ -15,6 +15,8 @@ export interface AppView {
   readonly segment: number;
   readonly segmentsPerDay: number;
   readonly phase: TrialPhase;
+  /** 観測された現象の表示テキスト（Phenomenon をローカライズ済み・数値なし・EP-2.10）。 */
+  readonly observations: readonly string[];
 }
 
 /** 復元経路の静かな言い換え（憲章§10.2・§11.4 の語彙）。 */
@@ -42,11 +44,22 @@ export function App({ view }: { view: AppView }) {
         fontFamily: 'system-ui, sans-serif',
       }}
     >
-      <div style={{ textAlign: 'center', lineHeight: 2 }}>
-        <p aria-label="準備中" style={{ fontSize: '1.5rem', margin: 0 }}>
-          …
-        </p>
-        <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: 0 }}>
+      <div style={{ textAlign: 'center', lineHeight: 2, maxWidth: '28rem', padding: '0 1rem' }}>
+        {/* 観測された猫の様子（見えた事実のみ）。構図は固定し、変わるのはこの言葉だけ（B3 ③） */}
+        {view.observations.length > 0 ? (
+          <div aria-label="観察" style={{ margin: 0 }}>
+            {view.observations.map((text, i) => (
+              <p key={i} style={{ fontSize: '1.15rem', margin: 0 }}>
+                {text}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p aria-label="準備中" style={{ fontSize: '1.5rem', margin: 0 }}>
+            …
+          </p>
+        )}
+        <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: '1rem 0 0' }}>
           {view.phase === 'ended'
             ? `${view.day}日目・おわり`
             : `${view.day}日目 ・ ${view.segment + 1}/${view.segmentsPerDay}`}
