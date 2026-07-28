@@ -464,6 +464,15 @@ export class GameRuntime {
     return this.#save.write(this.#capture());
   }
 
+  /**
+   * セーブ（本体＋バックアップ）を消去する（リプレイの土台・EP-3.13）。
+   * ⚠️ 以後この storage から新規に起動すると「はじめから」（タイトル）になる。
+   *    巻き戻しではなく「あずかりのやり直し」——別の子・別の30日として始める（Pillar 4）。
+   */
+  clearSave(): void {
+    this.#save.clear();
+  }
+
   /** ライフサイクル終了。 */
   dispose(): void {
     this.#manager.dispose();
