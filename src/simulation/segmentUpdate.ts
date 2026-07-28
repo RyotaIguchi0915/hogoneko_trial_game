@@ -49,6 +49,8 @@ export interface SegmentContext {
   readonly zones?: readonly ZoneChoice[];
   /** この Segment に突発刺激が起きたか（§8.1 step5・EP-3.06）。true なら警戒が跳ね上がる。 */
   readonly stimulus?: boolean;
+  /** 情動アークのペース補正（短縮デモで弧を縮尺に・EP-3.09）。省略時 1（本編）。Familiarity の育ちに掛かる。 */
+  readonly paceScale?: number;
   /** 行動選択の behavior ストリーム RNG（B5 §8.4）。省略時は argmax（EP-2.02）。 */
   readonly behaviorRng?: Rng;
 }
@@ -81,8 +83,8 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
 
   const affect = { arousal, valence, vigilance, stressLoad };
 
-  // step9: Relationship（在室で Familiarity 微増・Trust は日次）
-  const relationship = updateRelationship(state.relationship, ctx.inRoom);
+  // step9: Relationship（在室で Familiarity 微増・Trust は日次）。paceScale で弧を縮尺（EP-3.09）。
+  const relationship = updateRelationship(state.relationship, ctx.inRoom, ctx.paceScale);
 
   // step11: N-01 安全欲求（Affect/Relationship/Zone に依存するため後段）
   const safety = updateSafety(affect, relationship, env.zoneSecurity);

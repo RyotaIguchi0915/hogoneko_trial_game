@@ -19,6 +19,7 @@ export {
   initialTime,
   isInRoomSegment,
   DEFAULT_TRIAL_CONFIG,
+  DEMO_TRIAL_CONFIG,
   type TimeState,
   type TrialConfig,
   type TrialPhase,

@@ -29,6 +29,16 @@ export const DEFAULT_TRIAL_CONFIG: TrialConfig = {
   segmentsPerDay: 6,
 };
 
+/**
+ * デモ用の短縮構成（EP-3.09）。本編30日を数分で通せるよう日数を絞る。
+ * ⚠️ 本編は30日固定（憲章§14.3）。これは**デモ専用**の別 config で、合成ルートが情動アークのペースを
+ *    日数比で補正して「縮尺でも同じ弧」を見せる（GameRuntime の paceScale）。
+ */
+export const DEMO_TRIAL_CONFIG: TrialConfig = {
+  totalDays: 7,
+  segmentsPerDay: 6,
+};
+
 export type TrialPhase = 'running' | 'ended';
 
 export interface TimeState {

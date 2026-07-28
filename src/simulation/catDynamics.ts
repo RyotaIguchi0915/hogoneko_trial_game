@@ -31,7 +31,7 @@ export const PROVISIONAL = {
    * ⚠️ これは「ご飯＝信頼+」のメーターではない（憲章 I-2）。快適さを損なうと落ち着けず、結果として信頼が育ちにくい、
    *    という間接経路。世話（空腹を鎮める）は絆を"買う"のでなく、安心できる条件を整える。
    */
-  needsDistress: { hungerThreshold: 0.6, vigilanceGain: 0.35 },
+  needsDistress: { hungerThreshold: 0.45, vigilanceGain: 0.7 },
   /** StressLoad: dS = alpha·max(0, Vigilance−theta) − beta。上限 0.8（B5 §3.2）。 */
   stress: { alpha: 0.1, theta: 0.4, beta: 0.03, cap: 0.8 },
   /** Arousal は Vigilance を追う（慣性あり）。 */
@@ -98,11 +98,20 @@ export function updateValence(needs: Needs, relationship: Relationship): number 
   return clamp(relationship.trust - avgUnmet, -1, 1);
 }
 
-/** §8.1 step9: Relationship の Segment 更新（在室で Familiarity 微増。Trust は日次＝updateTrustDaily）。 */
-export function updateRelationship(relationship: Relationship, inRoom: boolean): Relationship {
+/**
+ * §8.1 step9: Relationship の Segment 更新（在室で Familiarity 微増。Trust は日次＝updateTrustDaily）。
+ * famScale は日数比のペース補正（短縮デモで弧全体を縮尺に・EP-3.09）。1 で本編どおり。
+ */
+export function updateRelationship(
+  relationship: Relationship,
+  inRoom: boolean,
+  famScale = 1,
+): Relationship {
   return {
     trust: relationship.trust,
-    familiarity: clamp01(relationship.familiarity + (inRoom ? PROVISIONAL.familiarityRise : 0)),
+    familiarity: clamp01(
+      relationship.familiarity + (inRoom ? PROVISIONAL.familiarityRise * famScale : 0),
+    ),
   };
 }
 
@@ -112,13 +121,18 @@ export function updateRelationship(relationship: Relationship, inRoom: boolean):
  * ストレスは信頼を即座に削る（速い・非対称・B5 §5.2）。
  * ⚠️ 係数は仮値（監修）。⚠️ 世話（介入）による加点は将来の拡充（今は「穏やかな在室＝安全の学習」で育つ）。
  */
-export function updateTrustDaily(relationship: Relationship, affect: Affect): Relationship {
+export function updateTrustDaily(
+  relationship: Relationship,
+  affect: Affect,
+  gainScale = 1,
+): Relationship {
   const { gain, loss } = PROVISIONAL.trustDaily;
   // 落ち着き（0..1）: 警戒もストレスも低いほど高い。
   const calm = (1 - affect.vigilance) * (1 - affect.stressLoad);
   // 慣れているほど、穏やかな時間が信頼に変わりやすい（0.5〜1.0 の係数）。
-  const rise = gain * calm * (0.5 + 0.5 * relationship.familiarity);
-  // ストレスは信頼を即座に削る（非対称）。
+  // gainScale は日数比の補正（短縮デモで同じ弧を縮尺で見せる・EP-3.09）。1 で本編どおり。
+  const rise = gain * gainScale * calm * (0.5 + 0.5 * relationship.familiarity);
+  // ストレスは信頼を即座に削る（非対称）。gainScale は掛けない（下降は速いまま）。
   const drop = loss * affect.stressLoad;
   return {
     trust: clamp01(relationship.trust + rise - drop),
