@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { AppView } from './appView';
 import { drawScene, type SpriteImages } from './drawScene';
 import { SPRITES, SPRITE_KEYS } from './sprites';
+import { type SceneColors, SCENE_LIGHT } from './theme';
 
 /**
  * Scene — Canvas 2D の描画ホスト（L4 Presentation / ADR-001 / EP-2.10）
@@ -15,10 +16,13 @@ export function Scene({
   view,
   width = 320,
   height = 220,
+  colors = SCENE_LIGHT,
 }: {
   view: AppView;
   width?: number;
   height?: number;
+  /** テーマ配色（ライト/ダーク・EP-3.12）。省略時はライト。 */
+  colors?: SceneColors;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const spritesRef = useRef<SpriteImages>({});
@@ -33,7 +37,7 @@ export function Scene({
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawScene(ctx, view, width, height, spritesRef.current);
+    drawScene(ctx, view, width, height, spritesRef.current, colors);
   };
 
   // スプライトのプリロード（初回）。読み込めたものから順に反映して再描画。
@@ -55,8 +59,8 @@ export function Scene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // view / サイズ変化で再描画。
-  useEffect(render, [view, width, height]);
+  // view / サイズ / テーマ配色の変化で再描画。
+  useEffect(render, [view, width, height, colors]);
 
   return (
     <canvas
