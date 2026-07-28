@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import { bootstrap, computeView } from './bootstrap';
 import { App } from './App';
+import { WATCH_TEMPO_MS } from './watch';
 import { createLocalStorageSaveStorage } from './localStorageStorage';
 
 /**
@@ -64,6 +65,46 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     expect(screen.getByLabelText('ご飯をあげる（残り2）')).toBeEnabled();
     fireEvent.click(screen.getByLabelText('ご飯をあげる（残り2）'));
     expect(screen.getByLabelText('ご飯をあげる（残り1）')).toBeInTheDocument(); // 枠が1減る
+  });
+
+  it('「見守る」で不在の時間を自動で流し、在室（世話できる）に達すると自動で止まる（EP-3.11）', () => {
+    vi.useFakeTimers();
+    try {
+      startApp(); // Day1 Seg0（不在・行動枠0）
+      act(() => {
+        fireEvent.click(screen.getByText('見守る'));
+      });
+      expect(screen.getByText('とまる')).toBeInTheDocument(); // 見守り中
+      // テンポ1コマ分進めると Seg1（在室）へ到達し、自動で手が止まる。
+      act(() => {
+        vi.advanceTimersByTime(WATCH_TEMPO_MS + 50);
+      });
+      expect(screen.getByText(/1日目 ・ 2\/6/)).toBeInTheDocument(); // Seg1
+      expect(screen.getByText('見守る')).toBeInTheDocument(); // 停止＝ラベルが戻る
+      expect(screen.getByLabelText('ご飯をあげる（残り2）')).toBeEnabled(); // 在室なので世話できる
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('「とまる」で見守りを手動で止められる（EP-3.11）', () => {
+    vi.useFakeTimers();
+    try {
+      startApp();
+      act(() => {
+        fireEvent.click(screen.getByText('見守る'));
+      });
+      act(() => {
+        fireEvent.click(screen.getByText('とまる')); // すぐ止める
+      });
+      const before = screen.getByText(/1日目 ・ \d\/6/).textContent;
+      act(() => {
+        vi.advanceTimersByTime(WATCH_TEMPO_MS * 3); // もう進まない
+      });
+      expect(screen.getByText(/1日目 ・ \d\/6/).textContent).toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('「次へ」で観察が観察ノート（Player Knowledge）に積まれる（EP-2.07）', () => {
