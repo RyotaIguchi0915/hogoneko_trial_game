@@ -104,3 +104,15 @@ describe('effectiveUrgency — 安全欲求が他をゲートする（§8.1 step
     expect(highSafety.safety).toBe(0.9); // 安全自身はゲートされない
   });
 });
+
+describe('updateCatSegment — 突発刺激（step5・EP-3.06）', () => {
+  it('stimulus=true だと Vigilance が上がる（刺激なしより高い）', () => {
+    const s: CatState = {
+      ...initialCatState(),
+      affect: { arousal: 0.3, valence: 0, vigilance: 0.15, stressLoad: 0 },
+    };
+    const calm = updateCatSegment(s, inRoomCtx);
+    const startled = updateCatSegment(s, { ...inRoomCtx, stimulus: true });
+    expect(startled.affect.vigilance).toBeGreaterThan(calm.affect.vigilance);
+  });
+});

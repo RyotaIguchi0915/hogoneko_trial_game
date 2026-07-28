@@ -9,9 +9,11 @@ import {
   updateRelationship,
   updateSafety,
   applyNeedSatisfaction,
+  needsDistress,
 } from './catDynamics';
 import { selectBehavior } from './catAI';
 import { selectZone, type ZoneChoice } from './zoneSelection';
+import { applyStimulusVigilance } from './stimulus';
 
 /**
  * Segment Update — 1 Segment の完全計算順序（L2 Simulation / B5 §8.1）
@@ -45,6 +47,8 @@ export interface SegmentContext {
   readonly environment?: CatEnvironmentInput;
   /** ゾーン選択の候補（全 Zone の導出環境・EP-3.02）。省略時は移動しない（現在地据え置き）。 */
   readonly zones?: readonly ZoneChoice[];
+  /** この Segment に突発刺激が起きたか（§8.1 step5・EP-3.06）。true なら警戒が跳ね上がる。 */
+  readonly stimulus?: boolean;
   /** 行動選択の behavior ストリーム RNG（B5 §8.4）。省略時は argmax（EP-2.02）。 */
   readonly behaviorRng?: Rng;
 }
@@ -61,14 +65,18 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
   // step4: 時間経過による Needs 圧の上昇（safety 以外）
   const needsAfterPressure = raiseNeedsPressure(state.needs);
 
-  // step6: Vigilance（下降＝baseline へ。上昇は刺激駆動 EP-2.09/2.02）
-  const vigilance = updateVigilance(state.affect);
+  // step5: 突発刺激（音・驚き）→ Vigilance を跳ね上げる（上昇側・EP-3.06）。以降の減衰/ストレスへ伝播。
+  const affectIn = ctx.stimulus ? applyStimulusVigilance(state.affect) : state.affect;
+
+  // step6: Vigilance（下降＝baseline へ。上昇は step5 の刺激＋満たされない欲求の不安・EP-3.07）。
+  //   空腹が高いほど落ち着けず baseline が上がる → 世話（空腹を鎮める）が間接的に安心＝信頼を支える。
+  const vigilance = updateVigilance(affectIn, needsDistress(needsAfterPressure));
 
   // step7: StressLoad（Vigilance の積分 − 減衰・上限0.8）
-  const stressLoad = updateStressLoad(state.affect.stressLoad, vigilance);
+  const stressLoad = updateStressLoad(affectIn.stressLoad, vigilance);
 
   // step8: Arousal / Valence
-  const arousal = updateArousal(state.affect.arousal, vigilance);
+  const arousal = updateArousal(affectIn.arousal, vigilance);
   const valence = updateValence(needsAfterPressure, state.relationship);
 
   const affect = { arousal, valence, vigilance, stressLoad };

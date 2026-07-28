@@ -3,9 +3,17 @@
 
 export { SimulationSystem } from './SimulationSystem';
 export { updateCatSegment, type SegmentContext, type CatEnvironmentInput } from './segmentUpdate';
-export { effectiveUrgency, updateTrustDaily, clamp01, clamp, PROVISIONAL } from './catDynamics';
+export {
+  effectiveUrgency,
+  updateTrustDaily,
+  needsDistress,
+  clamp01,
+  clamp,
+  PROVISIONAL,
+} from './catDynamics';
 export { feedCat, INTERVENTION_PROVISIONAL } from './interventions';
 export { traceForBehavior } from './trace';
+export { rollStimulus, applyStimulusVigilance, STIMULUS_PROVISIONAL } from './stimulus';
 export { dueEvents } from './eventSchedule';
 export {
   selectZone,
