@@ -74,8 +74,7 @@ export function bootstrap(deps: BootstrapDeps): BootstrapResult {
     ...(deps.config !== undefined ? { config: deps.config } : {}),
   });
   const restoreStatus = runtime.reader.getRestoreStatus();
-  // トライアルを開始する（booting→playing・EP-3.01）。旧セーブ（booting のまま）も再開時に開始する。
-  // ⚠️ title/preparing のオンボーディング画面は OI-4（本 MVP は内部遷移で playing まで進める）。
-  runtime.begin();
+  // 新規プレイはタイトル画面から（booting→title・EP-3.10）。復元は保存フェーズを維持（title を挟まない）。
+  runtime.showTitle();
   return { runtime, view: computeView(runtime, restoreStatus) };
 }

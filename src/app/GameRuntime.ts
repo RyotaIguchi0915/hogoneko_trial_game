@@ -379,14 +379,34 @@ export class GameRuntime {
   }
 
   /**
-   * トライアルを開始する（booting→playing・EP-3.01 物語アークの入口）。
-   * title/preparing は内部遷移（実画面・オンボーディングは OI-4）。既に開始済みなら何もしない（冪等）。
+   * トライアルを開始する（booting→playing・EP-3.01）。title/preparing を内部遷移で一気に通す。
+   * ⚠️ タイトル画面を出す通常フローは showTitle()→start()。begin() はテスト・タイトル省略の直行用。冪等。
    */
   begin(): void {
     if (this.#store.getGamePhase() !== 'booting') return;
     for (const to of ['loading', 'title', 'preparing', 'playing'] as const) {
       this.#store.transitionGamePhase(to);
     }
+  }
+
+  /**
+   * タイトル画面まで進める（booting→loading→title・EP-3.10）。新規プレイの入口。
+   * 既に開始済み（復元＝title 以外）なら何もしない（冪等）。以後 start() で本編へ。
+   */
+  showTitle(): void {
+    if (this.#store.getGamePhase() !== 'booting') return;
+    this.#store.transitionGamePhase('loading');
+    this.#store.transitionGamePhase('title');
+  }
+
+  /**
+   * タイトルから本編へ（title→preparing→playing・EP-3.10）。「はじめる」から呼ぶ。
+   * preparing は内部遷移（実画面は OI-4）。title 以外では何もしない（冪等）。
+   */
+  start(): void {
+    if (this.#store.getGamePhase() !== 'title') return;
+    this.#store.transitionGamePhase('preparing');
+    this.#store.transitionGamePhase('playing');
   }
 
   /**
