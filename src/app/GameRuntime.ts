@@ -31,6 +31,7 @@ import {
   SimulationSystem,
   feedCat,
   traceForBehavior,
+  updateTrustDaily,
   dueEvents,
   environmentEffect,
   mergeAttrDelta,
@@ -295,6 +296,7 @@ export class GameRuntime {
    * ⚠️ トライアル終了後（phase='ended'）は Simulation を回さない（AP-08）。
    */
   advanceSegment(): TimeState {
+    const prevDay = this.#time.now().day;
     const state = this.#time.advanceSegment();
     if (state.phase === 'running') {
       // 推移の前に、その Day に達したイベントを発火して環境を変える（世界の変化・§2.3）。
@@ -317,6 +319,15 @@ export class GameRuntime {
       }
       // 推移後の Segment を観測し、履歴へ一度だけ追記（Player Knowledge の再生成元・G-2）。
       this.#recordObservation(state);
+    }
+    // 日境界（新しい日に入った）で日次 Trust 更新（§8.3・関係の発達）。穏やかに過ごした日ほど信頼が育つ。
+    // ⚠️ Cat State は直接書き換えず L2 権限（simulationAccess）＋純粋関数経由で更新する（憲章 I-1）。
+    if (state.phase === 'running' && state.day > prevDay) {
+      const cat = this.#catAccess.getCatState();
+      this.#catAccess.applyCatState({
+        ...cat,
+        relationship: updateTrustDaily(cat.relationship, cat.affect),
+      });
     }
     // トライアル終了（30日消化）で去就の決定フェーズへ（playing のときのみ・EP-3.01 物語アーク）。
     if (state.phase === 'ended' && this.#store.getGamePhase() === 'playing') {

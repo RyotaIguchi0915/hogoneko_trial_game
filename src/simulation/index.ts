@@ -3,7 +3,7 @@
 
 export { SimulationSystem } from './SimulationSystem';
 export { updateCatSegment, type SegmentContext, type CatEnvironmentInput } from './segmentUpdate';
-export { effectiveUrgency, clamp01, clamp, PROVISIONAL } from './catDynamics';
+export { effectiveUrgency, updateTrustDaily, clamp01, clamp, PROVISIONAL } from './catDynamics';
 export { feedCat, INTERVENTION_PROVISIONAL } from './interventions';
 export { traceForBehavior } from './trace';
 export { dueEvents } from './eventSchedule';
