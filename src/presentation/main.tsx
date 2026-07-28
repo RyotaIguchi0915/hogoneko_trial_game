@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { DEMO_TRIAL_CONFIG } from '@core/index';
 import { App } from './App';
 import { bootstrap } from './bootstrap';
 import { createLocalStorageSaveStorage } from './localStorageStorage';
@@ -20,11 +21,13 @@ if (!rootElement) {
 }
 
 // 新規プレイスルーのシードは L4 で一度だけ選び、以後はセーブから復元される（B4 §9.2）。
+// ⚠️ 現状は**デモ構成**（短縮・数分で通せる・EP-3.09）。本編30日にするなら config を外す（DEFAULT）。
 const { runtime, view } = bootstrap({
   storage: createLocalStorageSaveStorage(),
   clock: () => Date.now(),
   seed: Date.now() >>> 0,
   buildVersion: '0.1.0',
+  config: DEMO_TRIAL_CONFIG,
 });
 
 // ページ離脱時の緊急保存（B4 §9.4）。

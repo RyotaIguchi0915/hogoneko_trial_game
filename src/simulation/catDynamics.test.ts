@@ -49,7 +49,7 @@ describe('updateTrustDaily — 日次 Trust 更新（B5 §8.3 / §5.2）', () =>
 
 describe('needsDistress / 欲求不快が警戒に効く（EP-3.07）', () => {
   it('空腹が閾値以下は不快0、超えると不快が増える', () => {
-    expect(needsDistress({ safety: 0, hunger: 0.5, elimination: 0 })).toBe(0);
+    expect(needsDistress({ safety: 0, hunger: 0.3, elimination: 0 })).toBe(0); // 閾値(0.45)以下
     expect(needsDistress({ safety: 0, hunger: 0.9, elimination: 0 })).toBeGreaterThan(0);
   });
 

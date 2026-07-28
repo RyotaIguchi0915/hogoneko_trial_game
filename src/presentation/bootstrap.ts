@@ -1,4 +1,4 @@
-import { DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock } from '@core/index';
+import { DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock, type TrialConfig } from '@core/index';
 import { Localization } from '@data/index';
 import { GameRuntime } from '@app/index';
 import { LOCALES } from '@content/locales';
@@ -19,6 +19,8 @@ export interface BootstrapDeps {
   readonly clock: Clock;
   readonly seed: number;
   readonly buildVersion?: string;
+  /** トライアル構成（省略時は本編30日）。デモは DEMO_TRIAL_CONFIG を渡す（EP-3.09）。 */
+  readonly config?: TrialConfig;
 }
 
 export interface BootstrapResult {
@@ -69,6 +71,7 @@ export function bootstrap(deps: BootstrapDeps): BootstrapResult {
     clock: deps.clock,
     seed: deps.seed,
     ...(deps.buildVersion !== undefined ? { buildVersion: deps.buildVersion } : {}),
+    ...(deps.config !== undefined ? { config: deps.config } : {}),
   });
   const restoreStatus = runtime.reader.getRestoreStatus();
   // トライアルを開始する（booting→playing・EP-3.01）。旧セーブ（booting のまま）も再開時に開始する。

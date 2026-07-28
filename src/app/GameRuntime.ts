@@ -139,9 +139,13 @@ export class GameRuntime {
   #zoneOverrides: Map<string, ZoneAttributeDelta>;
   /** 去就の決定（Persisted・deciding で確定・EP-3.08）。 */
   #decision: Decision | null;
+  /** 情動アークのペース補正（本編30日=1・短縮デモで日数比・EP-3.09）。日次 Trust の育ちに掛ける。 */
+  readonly #paceScale: number;
 
   private constructor(deps: GameRuntimeDeps) {
     const config = deps.config ?? DEFAULT_TRIAL_CONFIG;
+    // 短縮デモでも「30日と同じ弧」を縮尺で見せるため、日数比でアークを速める（本編は 1・EP-3.09）。
+    this.#paceScale = DEFAULT_TRIAL_CONFIG.totalDays / config.totalDays;
     this.#bus = createEventBus();
     this.#save = new SaveSystem(deps.storage, deps.clock, this.#bus, {
       buildVersion: deps.buildVersion ?? '0.0.0',
@@ -342,6 +346,8 @@ export class GameRuntime {
         zones: this.#zoneChoices(), // 現在地 Zone の env で状態更新し、全 Zone から次の居場所を選ぶ（EP-3.02）
         // 突発刺激（環境音）を用途別 stream で決定論的に判定（EP-3.06・中盤の起伏）。
         stimulus: rollStimulus(this.#rng.fork('stimulus', state.day, state.segment)),
+        paceScale: this.#paceScale, // 短縮デモで Familiarity の育ちも縮尺に（EP-3.09）
+
         // 行動選択の揺らぎは用途別ストリームで（B5 §8.4）。root を消費せず fork（保存位置に非依存・決定論）。
         behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
       });
@@ -360,7 +366,7 @@ export class GameRuntime {
       const cat = this.#catAccess.getCatState();
       this.#catAccess.applyCatState({
         ...cat,
-        relationship: updateTrustDaily(cat.relationship, cat.affect),
+        relationship: updateTrustDaily(cat.relationship, cat.affect, this.#paceScale),
       });
     }
     // トライアル終了（30日消化）で去就の決定フェーズへ（playing のときのみ・EP-3.01 物語アーク）。
