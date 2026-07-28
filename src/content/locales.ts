@@ -18,7 +18,7 @@ export const LOCALES: LocalizationDictionary = {
     'phenomenon.self_grooming': '毛づくろいをしている',
     'phenomenon.shed_fur': '毛が落ちている',
     'phenomenon.moved_object': '物の位置が変わっている',
-    'phenomenon.food_reduced': '餌が減っている',
+    'phenomenon.food_reduced': 'ごはんが減っている',
     'phenomenon.warm_hollow': 'クッションにくぼみが残っている',
   },
 };

@@ -7,7 +7,7 @@ import { createLocalStorageSaveStorage } from './localStorageStorage';
 /**
  * EP-14/2.08/2.10 の実ブラウザ相当スモーク（jsdom + window.localStorage + React 描画）。
  *
- * 「開くとシーンが出る → 次へで時間が進む → 餌をやる（介入）→ リロードで復元」を、
+ * 「開くとシーンが出る → 次へで時間が進む → ご飯をあげる（介入）→ リロードで復元」を、
  * ブラウザ API（localStorage）と実際の DOM 操作を通して確認する。
  */
 const fixedClock = () => 1_700_000_000_000;
@@ -42,7 +42,7 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     expect(screen.getByText(/1日目 ・ 2\/6/)).toBeInTheDocument(); // seg0 → seg1
   });
 
-  it('不在 Segment（Seg0）では餌やりは不可（行動枠0）', () => {
+  it('不在 Segment（Seg0）ではご飯をあげられない（行動枠0）', () => {
     const { runtime, view } = bootstrap({
       storage: createLocalStorageSaveStorage(),
       clock: fixedClock,
@@ -50,10 +50,10 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     });
     expect(view.actionSlots).toBe(0); // Seg0=未明=不在
     render(<App runtime={runtime} initialView={view} />);
-    expect(screen.getByLabelText(/餌をやる/)).toBeDisabled();
+    expect(screen.getByLabelText(/ご飯をあげる/)).toBeDisabled();
   });
 
-  it('在室 Segment では餌やりが可能で、行動枠が減る（B2 §4）', () => {
+  it('在室 Segment ではご飯をあげられて、行動枠が減る（B2 §4）', () => {
     const { runtime, view } = bootstrap({
       storage: createLocalStorageSaveStorage(),
       clock: fixedClock,
@@ -61,9 +61,9 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     });
     render(<App runtime={runtime} initialView={view} />);
     fireEvent.click(screen.getByText('次へ')); // Seg1=朝=在室（枠2）
-    expect(screen.getByLabelText('餌をやる（残り2）')).toBeEnabled();
-    fireEvent.click(screen.getByLabelText('餌をやる（残り2）'));
-    expect(screen.getByLabelText('餌をやる（残り1）')).toBeInTheDocument(); // 枠が1減る
+    expect(screen.getByLabelText('ご飯をあげる（残り2）')).toBeEnabled();
+    fireEvent.click(screen.getByLabelText('ご飯をあげる（残り2）'));
+    expect(screen.getByLabelText('ご飯をあげる（残り1）')).toBeInTheDocument(); // 枠が1減る
   });
 
   it('「次へ」で観察が観察ノート（Player Knowledge）に積まれる（EP-2.07）', () => {
@@ -88,7 +88,7 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     expect(second.view.knowledgeNotes.length).toBeGreaterThan(0);
   });
 
-  it('30日を終えると決定→結末アークの画面になる（EP-3.01）', () => {
+  it('30日を終えると決定（迎える/お別れ）→絆で変わる結末になる（EP-3.08）', () => {
     const { runtime } = bootstrap({
       storage: createLocalStorageSaveStorage(),
       clock: fixedClock,
@@ -99,10 +99,14 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
       runtime.advanceSegment();
     }
     render(<App runtime={runtime} initialView={computeView(runtime, 'ok')} />);
-    // deciding の語り＋「決める」→ ending の語り＋「つづける」。
-    expect(screen.getByText('決める')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('決める'));
-    expect(screen.getByText('つづける')).toBeInTheDocument();
+    // deciding: 二択が出る → 迎える → 結末の語り＋「つづける」→ epilogue → reflection（操作なし）。
+    expect(screen.getByText('迎える')).toBeInTheDocument();
+    expect(screen.getByText('お別れする')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('迎える'));
+    expect(screen.getByLabelText('結末')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('つづける')); // ending → epilogue
+    fireEvent.click(screen.getByText('つづける')); // epilogue → reflection
+    expect(screen.getByLabelText('ふりかえり')).toBeInTheDocument();
   });
 
   it('リロード（同一 localStorage で再 bootstrap）で進行が復元される', () => {

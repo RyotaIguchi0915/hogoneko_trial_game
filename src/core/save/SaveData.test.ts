@@ -178,6 +178,15 @@ describe('SaveData — validateStructure', () => {
     expect(validateStructure(badOverrides).errors.join()).toMatch(/zoneOverrides is invalid/);
   });
 
+  it('decision 欠落は受理し、adopt/return なら受理・不正は拒否（EP-3.08 後方互換）', () => {
+    expect(validateStructure(serialize(sampleSnapshot(), 1, 'x')).valid).toBe(true); // 欠落OK
+    expect(validateStructure(serialize(sampleSnapshot({ decision: 'adopt' }), 1, 'x')).valid).toBe(
+      true,
+    );
+    const bad = serialize(sampleSnapshot({ decision: 'maybe' as unknown as 'adopt' }), 1, 'x');
+    expect(validateStructure(bad).errors.join()).toMatch(/decision is invalid/);
+  });
+
   it('cat.currentZone 欠落を検出する（v3・EP-3.02）', () => {
     const { currentZone: _omit, ...catWithoutZone } = initialCatState();
     const save = serialize(

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { RestoreStatus, GamePhase } from '@core/index';
-import type { GameRuntime } from '@app/index';
+import type { RestoreStatus } from '@core/index';
+import type { GameRuntime, Decision, BondTier } from '@app/index';
 import { Scene } from './Scene';
 import { computeView } from './bootstrap';
 import type { AppView } from './appView';
@@ -8,7 +8,7 @@ import type { AppView } from './appView';
 /**
  * App — L4 Presentation のルート（EP-14 / EP-2.10 描画 / EP-2.08 介入 / EP-3.04 トーン「やさしい観察画」）。
  *
- * Canvas シーン（Scene）＋観察キャプション＋最小の操作（次へ / 餌をやる）をやさしく提示する。
+ * Canvas シーン（Scene）＋観察キャプション＋最小の操作（次へ / ご飯をあげる）をやさしく提示する。
  * ⚠️ トーンは OI-4「やさしい観察画」（ポップで優しく静か）。まるい形・温かい色・ハチミツ色の差し色。
  *    レイアウトの本設計・本番アート（猫の絵）・結末の中身は監修（docs/17 参照）。ダーク対応は後続。
  * ⚠️ この層は Cat State（真実）を受け取らない。受け取るのは Phenomenon 由来の文字列・進行・行動枠のみ（憲章 I-1）。
@@ -86,18 +86,114 @@ function restoreNote(status: RestoreStatus): string {
 }
 
 /**
- * 結末アークの語り（EP-3.01 物語アーク・プレースホルダ）。
- * ⚠️ 去就の決定の中身・結末の意味づけ・本文・演出は**監修**。ここは遷移をやさしく繋ぐ器（同じトーン）。
- * reflection は終端（action なし）。
+ * 結末の語り（EP-3.08 決定＋絆で変わる結末・プレースホルダ）。
+ * ⚠️ 本文・意味づけ・演出は**監修**。ここは「30日の絆（bondTier）と選択（decision）を映す器」。
+ *    数値は使わず、runtime が渡す質的カテゴリ（distant/warming/bonded）で出し分ける（観測境界 I-1）。
  */
-const ARC_NARRATIVE: Partial<
-  Record<GamePhase, { readonly text: string; readonly action?: string }>
+const DECIDE_PROMPT = '30日が、すぎました。\nこの子との、これから。';
+
+const OUTCOME: Record<
+  Decision,
+  Record<BondTier, { readonly ending: string; readonly epilogue: string }>
 > = {
-  deciding: { text: '30日が、すぎました。\nこの子とのこれからを、決めるとき。', action: '決める' },
-  ending: { text: 'あなたは、決めた。', action: 'つづける' },
-  epilogue: { text: '——その後の、しずかな時間。', action: 'つづける' },
-  reflection: { text: 'この30日を、ふりかえる。' },
+  adopt: {
+    bonded: {
+      ending:
+        'あなたは、この子を家族に迎えることにした。\nその手のなかで、猫はもう安心して目を閉じる。',
+      epilogue: '——それからの日々。\nこの子は、ここが自分の場所だと知っている。',
+    },
+    warming: {
+      ending:
+        'あなたは、この子を家族に迎えることにした。\nまだ少し遠慮がちだけれど、確かにそばにいてくれる。',
+      epilogue: '——それからの日々。\n距離は、ゆっくり縮まっていくのだろう。',
+    },
+    distant: {
+      ending:
+        'あなたは、この子を家族に迎えることにした。\nこの子が心をひらくのは、きっとこれからだ。',
+      epilogue: '——それからの日々。\n焦らず、待つことにする。',
+    },
+  },
+  return: {
+    bonded: {
+      ending:
+        'あなたは、この子を送り出すことにした。\nこれだけ懐いてくれた子と離れるのは、やっぱり寂しい。',
+      epilogue: '——その後。\nあの30日は、確かにあたたかかった。',
+    },
+    warming: {
+      ending: 'あなたは、この子を送り出すことにした。\n少しずつ縮まった距離を、そっと手放す。',
+      epilogue: '——その後。\nこの子は、次の場所でもきっと大丈夫。',
+    },
+    distant: {
+      ending:
+        'あなたは、この子を送り出すことにした。\nこの子には、もっと合う場所があるのかもしれない。',
+      epilogue: '——その後。\nいつか、ちょうどいい相手に出会えますように。',
+    },
+  },
 };
+
+const REFLECTION: Record<BondTier, string> = {
+  bonded: 'この30日を、ふりかえる。\nよく見て、よく待った。',
+  warming: 'この30日を、ふりかえる。\n少しずつ、通じ合えた気がする。',
+  distant: 'この30日を、ふりかえる。\nまだ、わからないことも多い。',
+};
+
+/** 結末アークの静かな画面（語り＋任意の操作ボタン）。構図固定・Pillar 6。 */
+function ArcScreen({
+  text,
+  aria,
+  actions,
+}: {
+  readonly text: string;
+  readonly aria: string;
+  readonly actions: readonly {
+    readonly label: string;
+    readonly onClick: () => void;
+    readonly primary?: boolean;
+  }[];
+}) {
+  return (
+    <main style={pageStyle}>
+      <div style={{ ...cardStyle, minHeight: '18rem', display: 'grid', placeItems: 'center' }}>
+        <div>
+          <p
+            aria-label={aria}
+            style={{
+              fontSize: '1.4rem',
+              fontWeight: 700,
+              lineHeight: 2,
+              letterSpacing: '0.03em',
+              margin: 0,
+              whiteSpace: 'pre-line',
+            }}
+          >
+            {text}
+          </p>
+          {actions.length > 0 && (
+            <div
+              style={{
+                marginTop: '1.8rem',
+                display: 'flex',
+                gap: '0.6rem',
+                justifyContent: 'center',
+              }}
+            >
+              {actions.map((a) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  style={a.primary ? pillPrimary : pill}
+                  onClick={a.onClick}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}
 
 export function App({ runtime, initialView }: { runtime: GameRuntime; initialView: AppView }) {
   const [view, setView] = useState<AppView>(initialView);
@@ -114,41 +210,50 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
     refresh();
   };
   const onProceed = () => {
-    runtime.advancePhase(); // 結末アークを1段進める（EP-3.01）
+    runtime.advancePhase(); // 結末の語りを1段進める（ending→epilogue→reflection・EP-3.01）
+    runtime.save();
+    refresh();
+  };
+  const onDecide = (d: Decision) => {
+    runtime.decide(d); // 去就を決める（deciding→ending・EP-3.08）
     runtime.save();
     refresh();
   };
 
-  // 結末アーク（deciding/ending/epilogue/reflection）はやさしい語りの画面を出す（構図固定・Pillar 6）。
-  const arc = ARC_NARRATIVE[view.gamePhase];
-  if (arc) {
+  // 去就の決定（deciding）: 30日の締めくくり。迎える／お別れするを選ぶ（構図固定・Pillar 6）。
+  if (view.gamePhase === 'deciding') {
     return (
-      <main style={pageStyle}>
-        <div style={{ ...cardStyle, minHeight: '18rem', display: 'grid', placeItems: 'center' }}>
-          <div>
-            <p
-              aria-label="結末"
-              style={{
-                fontSize: '1.4rem',
-                fontWeight: 700,
-                lineHeight: 2,
-                letterSpacing: '0.03em',
-                margin: 0,
-                whiteSpace: 'pre-line',
-              }}
-            >
-              {arc.text}
-            </p>
-            {arc.action !== undefined && (
-              <div style={{ marginTop: '1.8rem' }}>
-                <button type="button" style={pillPrimary} onClick={onProceed}>
-                  {arc.action}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
+      <ArcScreen
+        aria="決定"
+        text={DECIDE_PROMPT}
+        actions={[
+          { label: '迎える', onClick: () => onDecide('adopt'), primary: true },
+          { label: 'お別れする', onClick: () => onDecide('return') },
+        ]}
+      />
+    );
+  }
+  // 結末の語り（ending/epilogue/reflection）: 決定と絆（bondTier）で出し分ける。
+  if (
+    view.gamePhase === 'ending' ||
+    view.gamePhase === 'epilogue' ||
+    view.gamePhase === 'reflection'
+  ) {
+    const decision: Decision = view.decision ?? 'adopt'; // 通常は決定済み（防御的既定）
+    const tier: BondTier = view.bondTier;
+    if (view.gamePhase === 'reflection') {
+      return <ArcScreen aria="ふりかえり" text={REFLECTION[tier]} actions={[]} />;
+    }
+    const text =
+      view.gamePhase === 'ending'
+        ? OUTCOME[decision][tier].ending
+        : OUTCOME[decision][tier].epilogue;
+    return (
+      <ArcScreen
+        aria="結末"
+        text={text}
+        actions={[{ label: 'つづける', onClick: onProceed, primary: true }]}
+      />
     );
   }
 
@@ -208,9 +313,9 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
             style={{ ...pillPrimary, opacity: view.actionSlots <= 0 ? 0.4 : 1 }}
             onClick={onFeed}
             disabled={view.actionSlots <= 0}
-            aria-label={`餌をやる（残り${view.actionSlots}）`}
+            aria-label={`ご飯をあげる（残り${view.actionSlots}）`}
           >
-            餌をやる（{view.actionSlots}）
+            ご飯をあげる（{view.actionSlots}）
           </button>
           <button
             type="button"

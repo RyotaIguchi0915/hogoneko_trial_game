@@ -54,6 +54,8 @@ export function computeView(
     segmentsPerDay: DEFAULT_TRIAL_CONFIG.segmentsPerDay,
     phase: progress.phase,
     gamePhase: runtime.reader.getGamePhase(),
+    decision: runtime.reader.getDecision(),
+    bondTier: runtime.reader.getBondTier(),
     observations,
     catSprite,
     actionSlots: runtime.reader.getActionSlots(),
