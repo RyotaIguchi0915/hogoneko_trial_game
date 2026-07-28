@@ -59,6 +59,11 @@ export interface CatState {
   readonly affect: Affect;
   readonly relationship: Relationship;
   readonly behavior: Behavior;
+  /**
+   * 現在地の Zone ID（B10 §5・EP-3.02）。毎 Segment 選択されるが「選択の結果」として状態に持ち越す
+   * （behavior と同格・慣性/前状態依存のため派生ではなく Persisted・B4 §9.2）。
+   */
+  readonly currentZone: string;
 }
 
 /**
@@ -72,5 +77,7 @@ export function initialCatState(): CatState {
     affect: { arousal: 0.3, valence: -0.2, vigilance: 0.5, stressLoad: 0.2 },
     relationship: { trust: 0.05, familiarity: 0.0 },
     behavior: 'hiding',
+    // 到着直後の居場所は隠れ場所（refuge）＝ content の defaultZoneId（B10 §5・暫定を正式化）。
+    currentZone: 'zone.refuge',
   };
 }

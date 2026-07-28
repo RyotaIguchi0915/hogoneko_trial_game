@@ -232,13 +232,32 @@ export class GameRuntime {
     }
   }
 
-  /** 発火の累積を反映した、現在の代表 Zone 環境（基準 env に調整を加えてクランプ）。 */
+  /** 猫の現在地 Zone を返す（未知なら既定 Zone にフォールバック・不正セーブ防御）。 */
+  #catZone(): string {
+    const z = this.#catAccess.getCatState().currentZone;
+    return this.#env.zoneIds().includes(z) ? z : this.#env.defaultZoneId();
+  }
+
+  /**
+   * 猫が今いる Zone の環境（発火の累積調整を反映してクランプ・EP-3.02）。
+   * ⚠️ envAdjust は現状グローバル加算（全 Zone 一律）。ゾーン別効果は EP-3.03 で正式化。
+   */
   #currentEnvironment(): { readonly zoneSecurity: number; readonly zoneComfort: number } {
-    const base = this.#env.defaultEnvironment();
+    const e = this.#env.environmentFor(this.#catZone());
     return {
-      zoneSecurity: clamp01(base.zoneSecurity + this.#envAdjust.security),
-      zoneComfort: clamp01(base.zoneComfort + this.#envAdjust.comfort),
+      zoneSecurity: clamp01(e.security + this.#envAdjust.security),
+      zoneComfort: clamp01(e.comfort + this.#envAdjust.comfort),
     };
+  }
+
+  /** ゾーン選択の候補（全 Zone の導出環境＋発火調整・EP-3.02）。 */
+  #zoneChoices(): readonly { id: string; type: string; security: number; comfort: number }[] {
+    return this.#env.allZones().map((z) => ({
+      id: z.zoneId,
+      type: z.type,
+      security: clamp01(z.security + this.#envAdjust.security),
+      comfort: clamp01(z.comfort + this.#envAdjust.comfort),
+    }));
   }
 
   /**
@@ -288,6 +307,7 @@ export class GameRuntime {
         segment: state.segment,
         inRoom: isInRoomSegment(state.segment),
         environment: this.#currentEnvironment(),
+        zones: this.#zoneChoices(), // 現在地 Zone の env で状態更新し、全 Zone から次の居場所を選ぶ（EP-3.02）
         // 行動選択の揺らぎは用途別ストリームで（B5 §8.4）。root を消費せず fork（保存位置に非依存・決定論）。
         behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
       });

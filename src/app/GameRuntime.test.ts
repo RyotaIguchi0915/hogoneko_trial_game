@@ -395,3 +395,42 @@ describe('GameRuntime — トライアル物語アーク（EP-3.01）', () => {
     rt2.dispose();
   });
 });
+
+describe('GameRuntime — cat-location（ゾーン移動・EP-3.02）', () => {
+  const REAL_ZONES = ['zone.refuge', 'zone.open_floor', 'zone.vantage'];
+
+  it('起動直後の現在地は既定 Zone（refuge）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    expect(rt.createTruthReader().getCatState().currentZone).toBe('zone.refuge');
+    rt.dispose();
+  });
+
+  it('進行中の現在地は実在ゾーンの範囲で選ばれ、決定論的に再現する', () => {
+    const visited = (seed: number) => {
+      const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed });
+      const seen: string[] = [];
+      for (let i = 0; i < 12; i++) {
+        rt.advanceSegment();
+        seen.push(rt.createTruthReader().getCatState().currentZone);
+      }
+      rt.dispose();
+      return seen;
+    };
+    const a = visited(7);
+    for (const z of a) expect(REAL_ZONES).toContain(z); // 未定義ゾーンへは行かない
+    expect(visited(7)).toEqual(a); // 同一シードで再現（決定論）
+  });
+
+  it('現在地 Zone がセーブ往復で保たれる', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 7 });
+    for (let i = 0; i < 5; i++) rt1.advanceSegment();
+    const zoneBefore = rt1.createTruthReader().getCatState().currentZone;
+    rt1.save();
+    rt1.dispose();
+
+    const rt2 = GameRuntime.create({ storage, clock, seed: 7 });
+    expect(rt2.createTruthReader().getCatState().currentZone).toBe(zoneBefore);
+    rt2.dispose();
+  });
+});

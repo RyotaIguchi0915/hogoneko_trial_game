@@ -8,6 +8,12 @@ export { feedCat, INTERVENTION_PROVISIONAL } from './interventions';
 export { traceForBehavior } from './trace';
 export { dueEvents } from './eventSchedule';
 export {
+  selectZone,
+  zoneUtility,
+  ZONE_SELECTION_PROVISIONAL,
+  type ZoneChoice,
+} from './zoneSelection';
+export {
   environmentEffect,
   combineDelta,
   EVENT_EFFECT_PROVISIONAL,

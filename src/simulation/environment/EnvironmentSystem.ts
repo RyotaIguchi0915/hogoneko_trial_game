@@ -14,6 +14,8 @@ import { computeZoneAttributes, computeZoneSecurity, computeZoneComfort } from '
  */
 export interface ZoneEnvironment {
   readonly zoneId: string;
+  /** Zone 型（refuge/rest/vantage/resource/open/boundary・B10 §2.5）。ゾーン選択の適合判定に使う。 */
+  readonly type: string;
   readonly security: number;
   readonly comfort: number;
 }
@@ -57,6 +59,7 @@ export class EnvironmentSystem {
     const attrs = computeZoneAttributes(zone.base, placed);
     return {
       zoneId,
+      type: zone.type,
       security: computeZoneSecurity(attrs, zone.selfScent),
       comfort: computeZoneComfort(attrs, zone.selfScent),
     };
@@ -66,6 +69,16 @@ export class EnvironmentSystem {
   defaultEnvironment(): CatEnvironmentInput {
     const env = this.environmentFor(this.#room.defaultZoneId);
     return { zoneSecurity: env.security, zoneComfort: env.comfort };
+  }
+
+  /** 全 Zone の導出環境（ゾーン選択の候補・EP-3.02）。 */
+  allZones(): readonly ZoneEnvironment[] {
+    return this.#room.zones.map((z) => this.environmentFor(z.id));
+  }
+
+  /** 既定 Zone（到着直後の居場所）。 */
+  defaultZoneId(): string {
+    return this.#room.defaultZoneId;
   }
 
   zoneIds(): readonly string[] {
