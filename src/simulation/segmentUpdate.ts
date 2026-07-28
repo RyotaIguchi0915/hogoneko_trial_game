@@ -9,6 +9,7 @@ import {
   updateRelationship,
   updateSafety,
   applyNeedSatisfaction,
+  needsDistress,
 } from './catDynamics';
 import { selectBehavior } from './catAI';
 import { selectZone, type ZoneChoice } from './zoneSelection';
@@ -67,8 +68,9 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
   // step5: 突発刺激（音・驚き）→ Vigilance を跳ね上げる（上昇側・EP-3.06）。以降の減衰/ストレスへ伝播。
   const affectIn = ctx.stimulus ? applyStimulusVigilance(state.affect) : state.affect;
 
-  // step6: Vigilance（下降＝baseline へ。上昇は step5 の刺激駆動）
-  const vigilance = updateVigilance(affectIn);
+  // step6: Vigilance（下降＝baseline へ。上昇は step5 の刺激＋満たされない欲求の不安・EP-3.07）。
+  //   空腹が高いほど落ち着けず baseline が上がる → 世話（空腹を鎮める）が間接的に安心＝信頼を支える。
+  const vigilance = updateVigilance(affectIn, needsDistress(needsAfterPressure));
 
   // step7: StressLoad（Vigilance の積分 − 減衰・上限0.8）
   const stressLoad = updateStressLoad(affectIn.stressLoad, vigilance);

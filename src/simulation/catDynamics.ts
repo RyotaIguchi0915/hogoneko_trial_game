@@ -23,9 +23,15 @@ export const PROVISIONAL = {
   needsRise: { hunger: 0.12, elimination: 0.15 },
   /** Vigilance の下降（baseline への接近率）。上昇は刺激駆動で EP-2.09/2.02。 */
   vigilanceDecay: 0.6,
-  /** Vigilance baseline = base + stressGain × StressLoad（B5 §3.4: ストレスが baseline を上げる）。 */
+  /** Vigilance baseline = base + stressGain × StressLoad + distressGain × 欲求不快（B5 §3.4）。 */
   vigilanceBase: 0.15,
   vigilanceStressGain: 0.5,
+  /**
+   * 満たされない欲求（空腹）が生む不安（B5 §2/§3.4）。閾値を超えた空腹が警戒 baseline を押し上げる。
+   * ⚠️ これは「餌＝信頼+」のメーターではない（憲章 I-2）。快適さを損なうと落ち着けず、結果として信頼が育ちにくい、
+   *    という間接経路。世話（空腹を鎮める）は絆を"買う"のでなく、安心できる条件を整える。
+   */
+  needsDistress: { hungerThreshold: 0.6, vigilanceGain: 0.35 },
   /** StressLoad: dS = alpha·max(0, Vigilance−theta) − beta。上限 0.8（B5 §3.2）。 */
   stress: { alpha: 0.1, theta: 0.4, beta: 0.03, cap: 0.8 },
   /** Arousal は Vigilance を追う（慣性あり）。 */
@@ -58,11 +64,21 @@ export function raiseNeedsPressure(needs: Needs): Needs {
  * §8.1 step6: Vigilance を baseline へ減衰させる（非対称の下降側）。
  * 上昇（刺激・突発音）は EP-2.09/2.02 が加える。baseline は StressLoad が押し上げる。
  */
-export function updateVigilance(affect: Affect): number {
+export function updateVigilance(affect: Affect, needsDistress = 0): number {
   const baseline = clamp01(
-    PROVISIONAL.vigilanceBase + PROVISIONAL.vigilanceStressGain * affect.stressLoad,
+    PROVISIONAL.vigilanceBase +
+      PROVISIONAL.vigilanceStressGain * affect.stressLoad +
+      PROVISIONAL.needsDistress.vigilanceGain * needsDistress,
   );
   return clamp01(baseline + (affect.vigilance - baseline) * PROVISIONAL.vigilanceDecay);
+}
+
+/**
+ * 満たされない欲求が生む不快（0..1）。閾値を超えた空腹の分だけ不安になる（B5 §2）。純粋。
+ * ⚠️ MVP は空腹のみ（elimination 等は監修で拡充）。
+ */
+export function needsDistress(needs: Needs): number {
+  return clamp01(Math.max(0, needs.hunger - PROVISIONAL.needsDistress.hungerThreshold));
 }
 
 /** §8.1 step7: StressLoad = Vigilance の積分 − 減衰（上限 0.8）。 */

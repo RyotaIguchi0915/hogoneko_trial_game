@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { updateTrustDaily, PROVISIONAL } from './catDynamics';
+import { updateTrustDaily, needsDistress, updateVigilance, PROVISIONAL } from './catDynamics';
 import type { Affect, Relationship } from '@core/state/catState';
 
 const rel = (trust: number, familiarity: number): Relationship => ({ trust, familiarity });
@@ -44,5 +44,17 @@ describe('updateTrustDaily — 日次 Trust 更新（B5 §8.3 / §5.2）', () =>
     expect(
       updateTrustDaily(rel(1, 1), aff({ vigilance: 0, stressLoad: 0 })).trust,
     ).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('needsDistress / 欲求不快が警戒に効く（EP-3.07）', () => {
+  it('空腹が閾値以下は不快0、超えると不快が増える', () => {
+    expect(needsDistress({ safety: 0, hunger: 0.5, elimination: 0 })).toBe(0);
+    expect(needsDistress({ safety: 0, hunger: 0.9, elimination: 0 })).toBeGreaterThan(0);
+  });
+
+  it('欲求不快は Vigilance baseline を押し上げる（落ち着けない）', () => {
+    const calm: Affect = { arousal: 0.3, valence: 0, vigilance: 0.15, stressLoad: 0 };
+    expect(updateVigilance(calm, 0.4)).toBeGreaterThan(updateVigilance(calm, 0));
   });
 });
