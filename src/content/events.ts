@@ -37,10 +37,11 @@ export const EVENT_CONTENT: readonly unknown[] = [
     difficulty: 1,
     trigger: { type: 'time', params: { day: 1 } },
     changes: [
+      // 隠れ場所（refuge）の遮蔽を上げる（加算デルタ・仮値）。
       {
         target: 'environment',
         command: 'setZoneCover',
-        params: { zone: 'zone.shelf', cover: 0.8 },
+        params: { zone: 'zone.refuge', cover: 0.3 },
       },
     ],
     cues: [
@@ -58,10 +59,11 @@ export const EVENT_CONTENT: readonly unknown[] = [
     difficulty: 1,
     trigger: { type: 'time', params: { day: 2 } },
     changes: [
+      // 開けた場所（open_floor）の遮蔽をさらに減らす（対比・加算デルタ・仮値）。
       {
         target: 'environment',
         command: 'setZoneCover',
-        params: { zone: 'zone.floor_open', cover: 0.1 },
+        params: { zone: 'zone.open_floor', cover: -0.05 },
       },
     ],
     cues: [
@@ -78,12 +80,13 @@ export const EVENT_CONTENT: readonly unknown[] = [
     role: 'verification',
     difficulty: 2,
     trigger: { type: 'time', params: { day: 3 } },
-    changes: [{ target: 'resource', command: 'placeHideBox', params: { zone: 'zone.nook' } }],
+    // 高所（vantage）に隠れ箱を足す＝遮蔽と人との距離が増える（資源追加・仮値）。
+    changes: [{ target: 'resource', command: 'placeHideBox', params: { zone: 'zone.vantage' } }],
     cues: [
       { channel: 'direct', phenomenon: 'phenomenon.curled_resting', condition: 'inRoom' },
       { channel: 'indirect', phenomenon: 'phenomenon.warm_hollow', guaranteedInSpiral: true },
     ],
-    termination: { type: 'stateCondition', params: { zone: 'zone.nook' } },
+    termination: { type: 'stateCondition', params: { zone: 'zone.vantage' } },
   },
   // T-5 反証: 「高ければ安心」の単純化を崩す（高いが遮蔽なしは使わない）。
   {
@@ -94,10 +97,11 @@ export const EVENT_CONTENT: readonly unknown[] = [
     difficulty: 2,
     trigger: { type: 'time', params: { day: 5 } },
     changes: [
+      // 高所（vantage）はさらに高くなるが遮蔽は減る＝「高いが安心とは限らない」（反証・仮値）。
       {
         target: 'environment',
         command: 'setZoneHeightCover',
-        params: { zone: 'zone.high_open', height: 0.9, cover: 0.1 },
+        params: { zone: 'zone.vantage', height: 0.2, cover: -0.1 },
       },
     ],
     cues: [

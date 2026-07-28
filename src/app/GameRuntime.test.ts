@@ -291,26 +291,27 @@ describe('GameRuntime — イベント発火（EP-2.09 発火 runtime）', () =>
   const readSave = (storage: SaveStorage) =>
     JSON.parse(storage.read('hogoneko/save/v1') as string).data as Record<string, any>;
 
-  it('その Day に達するとイベントが発火し、環境調整・発火IDが保存される', () => {
+  it('その Day に達するとイベントが発火し、対象 Zone の属性デルタと発火IDが保存される', () => {
     const storage = createMemorySaveStorage();
     const rt = GameRuntime.create({ storage, clock, seed: 1 });
-    rt.advanceSegment(); // Day1: seeding(day1・cover0.8) が発火
+    rt.advanceSegment(); // Day1: seeding（zone.refuge の cover +0.3）が発火
     rt.save();
     const data = readSave(storage);
     expect(data.firedEventIds).toContain('event.safe_place.seeding');
-    expect(data.envAdjust.security).toBeGreaterThan(0); // 遮蔽が増え安全側へ（仮値）
+    // 対象 Zone（refuge）にだけ属性デルタが乗る（遮蔽が増える）。
+    expect(data.zoneOverrides['zone.refuge'].cover).toBeGreaterThan(0);
     rt.dispose();
   });
 
-  it('同じイベントは同一 Day 内で再発火しない（envAdjust が積み増しされない）', () => {
+  it('同じイベントは同一 Day 内で再発火しない（オーバレイが積み増しされない）', () => {
     const storage = createMemorySaveStorage();
     const rt = GameRuntime.create({ storage, clock, seed: 1 });
     rt.advanceSegment(); // Day1 Seg1: seeding 発火
     rt.save();
-    const afterFire = readSave(storage).envAdjust.security;
+    const afterFire = readSave(storage).zoneOverrides['zone.refuge'].cover;
     for (let i = 0; i < 4; i++) rt.advanceSegment(); // Day1 Seg2..5（まだ Day1）
     rt.save();
-    expect(readSave(storage).envAdjust.security).toBe(afterFire); // 一度きり
+    expect(readSave(storage).zoneOverrides['zone.refuge'].cover).toBe(afterFire); // 一度きり
     rt.dispose();
   });
 
@@ -329,7 +330,7 @@ describe('GameRuntime — イベント発火（EP-2.09 発火 runtime）', () =>
     rt2.save(); // 復元直後に保存 → 発火状態は変わらない（再発火しない）
     const after = readSave(storage);
     expect([...after.firedEventIds].sort()).toEqual([...before.firedEventIds].sort());
-    expect(after.envAdjust).toEqual(before.envAdjust);
+    expect(after.zoneOverrides).toEqual(before.zoneOverrides);
     rt2.dispose();
   });
 });

@@ -33,9 +33,8 @@ import {
   traceForBehavior,
   dueEvents,
   environmentEffect,
-  combineDelta,
-  clamp01,
-  type EnvironmentDelta,
+  mergeAttrDelta,
+  type ZoneAttributeDelta,
   type EnvironmentSystem,
 } from '@simulation/index';
 import type { EventDef } from '@data/schemas/event';
@@ -118,8 +117,8 @@ export class GameRuntime {
   readonly #events: readonly EventDef[];
   /** 発火済みイベントID（Persisted・一度だけ発火・EP-2.09）。 */
   readonly #firedEventIds: Set<string>;
-  /** 発火が累積した環境調整（Persisted・代表 Zone の security/comfort への加算・EP-2.09）。 */
-  #envAdjust: EnvironmentDelta;
+  /** 発火が累積した Zone 別の属性デルタ（Persisted・EP-3.03）。猫が対象 Zone に居る時だけ効く。 */
+  #zoneOverrides: Map<string, ZoneAttributeDelta>;
 
   private constructor(deps: GameRuntimeDeps) {
     const config = deps.config ?? DEFAULT_TRIAL_CONFIG;
@@ -143,7 +142,7 @@ export class GameRuntime {
       this.#observationLog = snapshot.observationLog ?? [];
       this.#pendingTraces = snapshot.traces ?? [];
       this.#firedEventIds = new Set(snapshot.firedEventIds ?? []);
-      this.#envAdjust = snapshot.envAdjust ?? { security: 0, comfort: 0 };
+      this.#zoneOverrides = new Map(Object.entries(snapshot.zoneOverrides ?? {}));
     } else {
       this.#seed = deps.seed;
       this.#rng = createRng(deps.seed);
@@ -152,7 +151,7 @@ export class GameRuntime {
       this.#observationLog = [];
       this.#pendingTraces = [];
       this.#firedEventIds = new Set();
-      this.#envAdjust = { security: 0, comfort: 0 };
+      this.#zoneOverrides = new Map();
     }
 
     this.#catAccess = getSimulationStateAccess(this.#store);
@@ -214,19 +213,23 @@ export class GameRuntime {
       observationLog: this.#observationLog,
       traces: this.#pendingTraces,
       firedEventIds: [...this.#firedEventIds],
-      envAdjust: this.#envAdjust,
+      zoneOverrides: Object.fromEntries(this.#zoneOverrides),
     };
   }
 
   /**
-   * 現 Day に達したイベントを発火し、環境調整を累積する（EP-2.09 発火 runtime）。
+   * 現 Day に達したイベントを発火し、対象 Zone の属性デルタを累積する（EP-2.09/3.03）。
    * ⚠️ 猫の内部状態は変えない（StateChange.target が環境・資源のみ・§2.3）。発火後の反応は Cat AI に委ねる。
-   *    一度だけ発火（firedEventIds）。効果量は仮値・監修待ち（environmentEffect）。
+   *    一度だけ発火（firedEventIds）。効果は対象 Zone に限定され、猫がそこに居る時だけ効く（EP-3.03）。
    */
   #fireDueEvents(day: number): void {
     for (const e of dueEvents(this.#events, day, this.#firedEventIds)) {
       for (const change of e.changes) {
-        this.#envAdjust = combineDelta(this.#envAdjust, environmentEffect(change));
+        const eff = environmentEffect(change);
+        if (eff) {
+          const cur = this.#zoneOverrides.get(eff.zoneId) ?? {};
+          this.#zoneOverrides.set(eff.zoneId, mergeAttrDelta(cur, eff.attrs));
+        }
       }
       this.#firedEventIds.add(e.id);
     }
@@ -238,25 +241,20 @@ export class GameRuntime {
     return this.#env.zoneIds().includes(z) ? z : this.#env.defaultZoneId();
   }
 
-  /**
-   * 猫が今いる Zone の環境（発火の累積調整を反映してクランプ・EP-3.02）。
-   * ⚠️ envAdjust は現状グローバル加算（全 Zone 一律）。ゾーン別効果は EP-3.03 で正式化。
-   */
+  /** 猫が今いる Zone の環境（その Zone の発火オーバレイを反映して再導出・EP-3.03）。 */
   #currentEnvironment(): { readonly zoneSecurity: number; readonly zoneComfort: number } {
-    const e = this.#env.environmentFor(this.#catZone());
-    return {
-      zoneSecurity: clamp01(e.security + this.#envAdjust.security),
-      zoneComfort: clamp01(e.comfort + this.#envAdjust.comfort),
-    };
+    const zone = this.#catZone();
+    const e = this.#env.environmentFor(zone, this.#zoneOverrides.get(zone));
+    return { zoneSecurity: e.security, zoneComfort: e.comfort };
   }
 
-  /** ゾーン選択の候補（全 Zone の導出環境＋発火調整・EP-3.02）。 */
+  /** ゾーン選択の候補（全 Zone の導出環境・Zone 別発火オーバレイ反映・EP-3.02/3.03）。 */
   #zoneChoices(): readonly { id: string; type: string; security: number; comfort: number }[] {
-    return this.#env.allZones().map((z) => ({
+    return this.#env.allZones(this.#zoneOverrides).map((z) => ({
       id: z.zoneId,
       type: z.type,
-      security: clamp01(z.security + this.#envAdjust.security),
-      comfort: clamp01(z.comfort + this.#envAdjust.comfort),
+      security: z.security,
+      comfort: z.comfort,
     }));
   }
 
