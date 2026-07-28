@@ -11,7 +11,7 @@
  */
 
 /** 用途別ストリーム名（B5 §8.4） */
-export type RngStreamName = 'weather' | 'behavior' | 'trace' | 'micro' | 'profile';
+export type RngStreamName = 'weather' | 'behavior' | 'trace' | 'micro' | 'profile' | 'stimulus';
 
 export interface Rng {
   /** [0, 1) の一様乱数を1つ返し、内部状態を1ステップ進める */

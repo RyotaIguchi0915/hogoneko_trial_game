@@ -32,6 +32,7 @@ import {
   feedCat,
   traceForBehavior,
   updateTrustDaily,
+  rollStimulus,
   dueEvents,
   environmentEffect,
   mergeAttrDelta,
@@ -308,6 +309,8 @@ export class GameRuntime {
         inRoom: isInRoomSegment(state.segment),
         environment: this.#currentEnvironment(),
         zones: this.#zoneChoices(), // 現在地 Zone の env で状態更新し、全 Zone から次の居場所を選ぶ（EP-3.02）
+        // 突発刺激（環境音）を用途別 stream で決定論的に判定（EP-3.06・中盤の起伏）。
+        stimulus: rollStimulus(this.#rng.fork('stimulus', state.day, state.segment)),
         // 行動選択の揺らぎは用途別ストリームで（B5 §8.4）。root を消費せず fork（保存位置に非依存・決定論）。
         behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
       });
