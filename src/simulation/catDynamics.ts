@@ -36,6 +36,11 @@ export const PROVISIONAL = {
   safety: { securityWeight: 0.4, vigilanceWeight: 0.6, trustRelief: 0.3 },
   /** 行動による Need 充足（§8.1 step17）。eating で空腹が下がる。 */
   satisfaction: { eatingHungerRelief: 0.35 },
+  /**
+   * 日次 Trust 更新（§8.3・§5.2）。gain=穏やかに過ごした日の漸増（遅い）、loss=ストレスによる即時低下（速い）。
+   * 非対称: gain ≪ loss（信頼は数日で育ち、裏切り/強い恐怖で即座に崩れる）。
+   */
+  trustDaily: { gain: 0.04, loss: 0.15 },
 } as const;
 
 // --- 各ステップ（§8.1 の該当番号を付す） ---
@@ -77,11 +82,31 @@ export function updateValence(needs: Needs, relationship: Relationship): number 
   return clamp(relationship.trust - avgUnmet, -1, 1);
 }
 
-/** §8.1 step9: Relationship の Segment 更新（在室で Familiarity 微増。Trust は日次＝§8.3）。 */
+/** §8.1 step9: Relationship の Segment 更新（在室で Familiarity 微増。Trust は日次＝updateTrustDaily）。 */
 export function updateRelationship(relationship: Relationship, inRoom: boolean): Relationship {
   return {
     trust: relationship.trust,
     familiarity: clamp01(relationship.familiarity + (inRoom ? PROVISIONAL.familiarityRise : 0)),
+  };
+}
+
+/**
+ * §8.3 日次 Trust 更新。1日1回、日境界で適用する（Segment 更新とは別リズム）。
+ * 穏やか（低警戒・低ストレス）に過ごし、慣れ（familiarity）が育つほど信頼は少しずつ上がる（遅い）。
+ * ストレスは信頼を即座に削る（速い・非対称・B5 §5.2）。
+ * ⚠️ 係数は仮値（監修）。⚠️ 世話（介入）による加点は将来の拡充（今は「穏やかな在室＝安全の学習」で育つ）。
+ */
+export function updateTrustDaily(relationship: Relationship, affect: Affect): Relationship {
+  const { gain, loss } = PROVISIONAL.trustDaily;
+  // 落ち着き（0..1）: 警戒もストレスも低いほど高い。
+  const calm = (1 - affect.vigilance) * (1 - affect.stressLoad);
+  // 慣れているほど、穏やかな時間が信頼に変わりやすい（0.5〜1.0 の係数）。
+  const rise = gain * calm * (0.5 + 0.5 * relationship.familiarity);
+  // ストレスは信頼を即座に削る（非対称）。
+  const drop = loss * affect.stressLoad;
+  return {
+    trust: clamp01(relationship.trust + rise - drop),
+    familiarity: relationship.familiarity,
   };
 }
 

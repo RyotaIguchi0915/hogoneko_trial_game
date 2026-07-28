@@ -435,3 +435,36 @@ describe('GameRuntime — cat-location（ゾーン移動・EP-3.02）', () => {
     rt2.dispose();
   });
 });
+
+describe('GameRuntime — 関係の発達（日次 Trust・EP-3.05）', () => {
+  it('穏やかな数日で Trust が育つ（従来は不変 0.05 だった）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 12345 });
+    rt.begin();
+    const t0 = rt.createTruthReader().getCatState().relationship.trust;
+    for (let i = 0; i < 6 * 8; i++) rt.advanceSegment(); // 8日分
+    expect(rt.createTruthReader().getCatState().relationship.trust).toBeGreaterThan(t0);
+    rt.dispose();
+  });
+
+  it('日次 Trust は日境界でのみ動く（Day1 の Segment 内では不変）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 12345 });
+    rt.begin();
+    const t0 = rt.createTruthReader().getCatState().relationship.trust;
+    for (let i = 0; i < 5; i++) rt.advanceSegment(); // Day1 内（Seg1..5・日をまたがない）
+    expect(rt.createTruthReader().getCatState().relationship.trust).toBe(t0);
+    rt.dispose();
+  });
+
+  it('育った Trust がセーブ往復で保たれる', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 12345 });
+    rt1.begin();
+    for (let i = 0; i < 6 * 10; i++) rt1.advanceSegment();
+    const trust = rt1.createTruthReader().getCatState().relationship.trust;
+    rt1.save();
+    rt1.dispose();
+    const rt2 = GameRuntime.create({ storage, clock, seed: 12345 });
+    expect(rt2.createTruthReader().getCatState().relationship.trust).toBe(trust);
+    rt2.dispose();
+  });
+});
