@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { RestoreStatus } from '@core/index';
 import type { GameRuntime, Decision, BondTier } from '@app/index';
 import { Scene } from './Scene';
 import { computeView } from './bootstrap';
 import type { AppView } from './appView';
+import { WATCH_TEMPO_MS, isWatchable, shouldStopWatching } from './watch';
 
 /**
  * App — L4 Presentation のルート（EP-14 / EP-2.10 描画 / EP-2.08 介入 / EP-3.04 トーン「やさしい観察画」）。
  *
- * Canvas シーン（Scene）＋観察キャプション＋最小の操作（次へ / ご飯をあげる）をやさしく提示する。
+ * Canvas シーン（Scene）＋観察キャプション＋最小の操作（次へ / ご飯をあげる / 見守る）をやさしく提示する。
+ * 見守る（EP-3.11）は不在の時間を穏やかに自動で流し、在室（世話できる瞬間）に達すると自動で手を止める。
  * ⚠️ トーンは OI-4「やさしい観察画」（ポップで優しく静か）。まるい形・温かい色・ハチミツ色の差し色。
  *    レイアウトの本設計・本番アート（猫の絵）・結末の中身は監修（docs/17 参照）。ダーク対応は後続。
  * ⚠️ この層は Cat State（真実）を受け取らない。受け取るのは Phenomenon 由来の文字列・進行・行動枠のみ（憲章 I-1）。
@@ -197,6 +199,8 @@ function ArcScreen({
 
 export function App({ runtime, initialView }: { runtime: GameRuntime; initialView: AppView }) {
   const [view, setView] = useState<AppView>(initialView);
+  // 見守りモード（自動送り・EP-3.11）。プレイヤーが「見守る」で始め、在室に達すると自動で止まる。
+  const [watching, setWatching] = useState(false);
 
   const refresh = () => setView(computeView(runtime, initialView.restoreStatus));
   const onAdvance = () => {
@@ -204,6 +208,26 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
     runtime.save();
     refresh();
   };
+
+  // 見守り: 不在の時間を穏やかに自動で流し、在室（世話できる瞬間）や本編の終わりで手を止める（EP-3.11）。
+  // ⚠️ 進めるのは runtime.advanceSegment（決定論・G-3）。タイマーは「いつ進めるか」だけを担う。
+  //    停止判定は「1コマ進めた後」の状態で行う（押した瞬間に在室でも、まず一歩は進む）。
+  useEffect(() => {
+    if (!watching) return;
+    if (!isWatchable(view)) {
+      setWatching(false);
+      return;
+    }
+    const id = setTimeout(() => {
+      runtime.advanceSegment();
+      runtime.save();
+      const next = computeView(runtime, initialView.restoreStatus);
+      setView(next);
+      if (shouldStopWatching(next)) setWatching(false);
+    }, WATCH_TEMPO_MS);
+    return () => clearTimeout(id);
+  }, [watching, view, runtime, initialView.restoreStatus]);
+
   const onFeed = () => {
     runtime.feed();
     runtime.save(); // 介入は永続状態（空腹）を変える → チェックポイント保存（B4 §9.4）
@@ -350,22 +374,38 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
 
         {/* 操作（OI-4 トーン）。観察は無制限・介入は有限（B2 §4）。ハチミツ色は「今できること」。 */}
         <div
-          style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', marginTop: '1.35rem' }}
+          style={{
+            display: 'flex',
+            gap: '0.6rem',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            marginTop: '1.35rem',
+          }}
         >
           <button
             type="button"
-            style={{ ...pillPrimary, opacity: view.actionSlots <= 0 ? 0.4 : 1 }}
+            style={{ ...pillPrimary, opacity: view.actionSlots <= 0 || watching ? 0.4 : 1 }}
             onClick={onFeed}
-            disabled={view.actionSlots <= 0}
+            disabled={view.actionSlots <= 0 || watching}
             aria-label={`ご飯をあげる（残り${view.actionSlots}）`}
           >
             ご飯をあげる（{view.actionSlots}）
           </button>
+          {/* 見守る/とまる（自動送り・EP-3.11）。不在の時間を流し、在室で自動的に手が止まる。 */}
           <button
             type="button"
-            style={{ ...pill, opacity: ended ? 0.4 : 1 }}
-            onClick={onAdvance}
+            style={{ ...(watching ? pillPrimary : pill), opacity: ended ? 0.4 : 1 }}
+            onClick={() => setWatching((w) => !w)}
             disabled={ended}
+            aria-label={watching ? '見守りをとめる' : '見守る（自動で時間を進める）'}
+          >
+            {watching ? 'とまる' : '見守る'}
+          </button>
+          <button
+            type="button"
+            style={{ ...pill, opacity: ended || watching ? 0.4 : 1 }}
+            onClick={onAdvance}
+            disabled={ended || watching}
           >
             次へ
           </button>
