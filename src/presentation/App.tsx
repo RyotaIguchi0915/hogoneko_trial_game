@@ -219,6 +219,50 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
     runtime.save();
     refresh();
   };
+  const onStart = () => {
+    runtime.start(); // タイトル→本編（title→playing・EP-3.10）
+    runtime.save();
+    refresh();
+  };
+
+  // タイトル（title）: 前提をやさしく伝え、「はじめる」で本編へ（新規プレイの入口・EP-3.10）。
+  if (view.gamePhase === 'title') {
+    return (
+      <main style={pageStyle}>
+        <div style={{ ...cardStyle, minHeight: '20rem', display: 'grid', placeItems: 'center' }}>
+          <div>
+            <h1
+              style={{
+                fontSize: '1.8rem',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                lineHeight: 1.4,
+                margin: '0 0 1.3rem',
+              }}
+            >
+              保護猫トライアル30日
+            </h1>
+            <p
+              style={{
+                fontSize: '1rem',
+                color: T.ink2,
+                lineHeight: 2,
+                margin: '0 0 2rem',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {
+                'あなたは、この子を30日あずかることになった。\nできるのは——見て、待って、そっと世話をすること。\nさいごに、この子との「これから」を決める。'
+              }
+            </p>
+            <button type="button" style={pillPrimary} onClick={onStart}>
+              はじめる
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   // 去就の決定（deciding）: 30日の締めくくり。迎える／お別れするを選ぶ（構図固定・Pillar 6）。
   if (view.gamePhase === 'deciding') {

@@ -355,6 +355,28 @@ describe('GameRuntime — トライアル物語アーク（EP-3.01）', () => {
     rt.dispose();
   });
 
+  it('showTitle()→start() でタイトル→本編（EP-3.10）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
+    rt.showTitle();
+    expect(rt.reader.getGamePhase()).toBe('title'); // 新規はタイトルで止まる
+    rt.showTitle(); // 冪等（title からは動かない）
+    expect(rt.reader.getGamePhase()).toBe('title');
+    rt.start();
+    expect(rt.reader.getGamePhase()).toBe('playing'); // はじめる→本編
+    rt.start(); // 冪等
+    expect(rt.reader.getGamePhase()).toBe('playing');
+    rt.dispose();
+  });
+
+  it('title のまま30日消化しても deciding に遷移しない（start しないと本編が進まない）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
+    rt.showTitle(); // title 止まり（start しない）
+    playToEnd(rt);
+    expect(rt.reader.getProgress().phase).toBe('ended');
+    expect(rt.reader.getGamePhase()).toBe('title'); // playing でないので deciding へ遷移しない
+    rt.dispose();
+  });
+
   it('30日を消化すると playing→deciding へ自動遷移する', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
     rt.begin();
