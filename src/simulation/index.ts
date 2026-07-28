@@ -15,9 +15,10 @@ export {
 } from './zoneSelection';
 export {
   environmentEffect,
-  combineDelta,
+  mergeAttrDelta,
   EVENT_EFFECT_PROVISIONAL,
-  type EnvironmentDelta,
+  type EnvironmentChange,
+  type ZoneAttributeDelta,
 } from './eventEffects';
 export { EnvironmentSystem, type ZoneEnvironment } from './environment/EnvironmentSystem';
 export {

@@ -152,10 +152,10 @@ describe('SaveData — validateStructure', () => {
     expect(validateStructure(broken).errors.join()).toMatch(/traces is invalid/);
   });
 
-  it('firedEventIds / envAdjust 欠落は受理し、配列/数値2項なら受理・不正は拒否（EP-2.09 後方互換）', () => {
+  it('firedEventIds / zoneOverrides 欠落は受理し、配列/object なら受理・不正は拒否（EP-2.09/3.03 後方互換）', () => {
     expect(validateStructure(serialize(sampleSnapshot(), 1, 'x')).valid).toBe(true); // 欠落OK
     const withEvent = serialize(
-      sampleSnapshot({ firedEventIds: ['e1'], envAdjust: { security: 0.1, comfort: -0.2 } }),
+      sampleSnapshot({ firedEventIds: ['e1'], zoneOverrides: { 'zone.refuge': { cover: 0.3 } } }),
       1,
       'x',
     );
@@ -168,14 +168,14 @@ describe('SaveData — validateStructure', () => {
     );
     expect(validateStructure(badIds).errors.join()).toMatch(/firedEventIds is invalid/);
 
-    const badAdj = serialize(
+    const badOverrides = serialize(
       sampleSnapshot({
-        envAdjust: { security: 'x' } as unknown as { security: number; comfort: number },
+        zoneOverrides: [] as unknown as Record<string, Record<string, number>>,
       }),
       1,
       'x',
     );
-    expect(validateStructure(badAdj).errors.join()).toMatch(/envAdjust is invalid/);
+    expect(validateStructure(badOverrides).errors.join()).toMatch(/zoneOverrides is invalid/);
   });
 
   it('cat.currentZone 欠落を検出する（v3・EP-3.02）', () => {

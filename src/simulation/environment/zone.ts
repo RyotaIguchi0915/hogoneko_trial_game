@@ -62,6 +62,32 @@ export function computeZoneAttributes(
   };
 }
 
+/**
+ * イベント等による属性デルタを加算して再クランプする（EP-3.03）。
+ * 家具寄与と同じ値域規則（0..1 / exits は非負整数）で正規化する。
+ */
+export function applyAttributeDelta(
+  attrs: ZoneAttributes,
+  delta: Readonly<Partial<Record<AttributeName, number>>>,
+): ZoneAttributes {
+  const acc: Record<AttributeName, number> = { ...attrs };
+  for (const [k, v] of Object.entries(delta) as [AttributeName, number][]) {
+    acc[k] += v;
+  }
+  return {
+    height: clamp01(acc.height),
+    cover: clamp01(acc.cover),
+    exits: Math.max(0, Math.round(acc.exits)),
+    sightline: clamp01(acc.sightline),
+    humanDistance: clamp01(acc.humanDistance),
+    trafficLevel: clamp01(acc.trafficLevel),
+    noiseLevel: clamp01(acc.noiseLevel),
+    lightLevel: clamp01(acc.lightLevel),
+    temperature: clamp01(acc.temperature),
+    softness: clamp01(acc.softness),
+  };
+}
+
 /** ZoneSecurity（安全度・B10 §3.3）。selfScent は自己臭＝安心の加点。 */
 export function computeZoneSecurity(attrs: ZoneAttributes, selfScent: number): number {
   const w = ZONE_WEIGHTS.security;

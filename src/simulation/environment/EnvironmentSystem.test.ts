@@ -63,6 +63,24 @@ describe('EnvironmentSystem', () => {
     expect(input.zoneComfort).toBeLessThanOrEqual(1);
   });
 
+  it('属性オーバレイ（イベント効果）を反映して再導出する（EP-3.03）', () => {
+    const env = new EnvironmentSystem(room(), furnitureMap);
+    const bareOpen = env.environmentFor('zone.open').security;
+    // open に cover を加えると安全度が上がる（属性→B10 式で再導出）。
+    const coveredOpen = env.environmentFor('zone.open', { cover: 0.5 }).security;
+    expect(coveredOpen).toBeGreaterThan(bareOpen);
+  });
+
+  it('allZones は Zone 別オーバレイを反映する（対象 Zone だけ変わる・EP-3.03）', () => {
+    const env = new EnvironmentSystem(room(), furnitureMap);
+    const overrides = new Map([['zone.open', { cover: 0.5 }]]);
+    const withOv = env.allZones(overrides);
+    const open = withOv.find((z) => z.zoneId === 'zone.open');
+    const refuge = withOv.find((z) => z.zoneId === 'zone.refuge');
+    expect(open!.security).toBeGreaterThan(env.environmentFor('zone.open').security); // 対象は変わる
+    expect(refuge!.security).toBe(env.environmentFor('zone.refuge').security); // 非対象は不変
+  });
+
   it('defaultZoneId が存在しないと構築で失敗する（参照整合性）', () => {
     const bad = { ...room(), defaultZoneId: 'zone.nope' };
     expect(() => new EnvironmentSystem(bad, furnitureMap)).toThrow(/defaultZoneId/);

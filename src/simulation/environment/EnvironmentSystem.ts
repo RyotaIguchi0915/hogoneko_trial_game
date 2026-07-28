@@ -1,6 +1,14 @@
-import type { RoomDef, FurnitureDef, ZoneDef } from '@data/schemas/environment';
+import type { RoomDef, FurnitureDef, ZoneDef, AttributeName } from '@data/schemas/environment';
 import type { CatEnvironmentInput } from '../segmentUpdate';
-import { computeZoneAttributes, computeZoneSecurity, computeZoneComfort } from './zone';
+import {
+  computeZoneAttributes,
+  computeZoneSecurity,
+  computeZoneComfort,
+  applyAttributeDelta,
+} from './zone';
+
+/** Zone 属性への加算デルタ（イベント効果の反映・EP-3.03）。 */
+export type ZoneAttributeOverride = Readonly<Partial<Record<AttributeName, number>>>;
 
 /**
  * Environment System — 部屋の Zone から環境入力を導出する（L2 Simulation / B10）
@@ -49,14 +57,18 @@ export class EnvironmentSystem {
     }
   }
 
-  /** 指定 Zone の導出環境（安全度・快適度）。 */
-  environmentFor(zoneId: string): ZoneEnvironment {
+  /**
+   * 指定 Zone の導出環境（安全度・快適度）。override があればイベント由来の属性デルタを反映して再導出する。
+   * ⚠️ 導出のみ・不変（override は呼び出し側＝合成ルートが保持し注入する・EP-3.03）。
+   */
+  environmentFor(zoneId: string, override?: ZoneAttributeOverride): ZoneEnvironment {
     const zone = this.#zoneById.get(zoneId);
     if (!zone) throw new Error(`EnvironmentSystem: unknown zone "${zoneId}"`);
     const placed = zone.furniture
       .map((fid) => this.#furnitureById.get(fid))
       .filter((f): f is FurnitureDef => f !== undefined);
-    const attrs = computeZoneAttributes(zone.base, placed);
+    const base = computeZoneAttributes(zone.base, placed);
+    const attrs = override ? applyAttributeDelta(base, override) : base;
     return {
       zoneId,
       type: zone.type,
@@ -71,9 +83,9 @@ export class EnvironmentSystem {
     return { zoneSecurity: env.security, zoneComfort: env.comfort };
   }
 
-  /** 全 Zone の導出環境（ゾーン選択の候補・EP-3.02）。 */
-  allZones(): readonly ZoneEnvironment[] {
-    return this.#room.zones.map((z) => this.environmentFor(z.id));
+  /** 全 Zone の導出環境（ゾーン選択の候補・EP-3.02）。override Map があれば Zone 別に反映（EP-3.03）。 */
+  allZones(overrides?: ReadonlyMap<string, ZoneAttributeOverride>): readonly ZoneEnvironment[] {
+    return this.#room.zones.map((z) => this.environmentFor(z.id, overrides?.get(z.id)));
   }
 
   /** 既定 Zone（到着直後の居場所）。 */

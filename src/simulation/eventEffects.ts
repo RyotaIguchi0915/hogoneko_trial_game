@@ -1,60 +1,68 @@
 import type { StateChange } from '@data/schemas/event';
+import type { AttributeName } from '@data/schemas/environment';
 
 /**
- * Event Effects — 発火イベントの StateChange が環境へ及ぼす効果（L2 Simulation / B8 §2.3 / EP-2.09 発火 runtime）
+ * Event Effects — 発火イベントが Zone 属性へ及ぼす変化（L2 Simulation / B8 §2.3 / EP-3.03）
  *
- * イベントは環境・刺激・資源だけを変える（猫の内部状態は変えない・§2.3、型・schema で `cat.*` は不可）。
- * その後の猫の反応は Cat AI が自律的に決める（本モジュールは env への変化量だけを返す）。
- *
- * ⚠️⚠️ 効果量はすべて**仮値・監修待ち**（数値バランス＝人間ドメイン・DevConst ④）。
- * ⚠️ 本来は Zone 属性（cover/height/自己臭 等）を変え、そこから B10 の式で ZoneSecurity/Comfort を導く。
- *    MVP は「代表 Zone の security/comfort を直接調整する」簡略化。監修で Zone 属性ベースに差し替える。
+ * イベントは「対象 Zone の物理属性（cover/height 等）」を変える（環境・資源のみ・§2.3、猫の内部状態は不可）。
+ * ZoneSecurity/Comfort はその属性から B10 の式で**再導出**される（保存しない・AA-31）。EP-2.09 の
+ * 「代表 Zone の security を直接調整」する簡略化を廃し、正式な属性ベースにする。
+ * ⚠️ その後の猫の反応は Cat AI が自律的に決める。⚠️ 効果量は**仮値・監修待ち**（数値バランス＝人間ドメイン）。
+ * ⚠️ params の数値は**加算デルタ**として解釈する（暫定・監修で set/add 意味論を確定）。
  */
 
-/** 発火が環境（代表 Zone）へ与える調整量（security/comfort の加算・[-1,1] 想定）。 */
-export interface EnvironmentDelta {
-  readonly security: number;
-  readonly comfort: number;
-}
+/** 対象 Zone の属性への加算デルタ（Partial・EP-3.03）。 */
+export type ZoneAttributeDelta = Readonly<Partial<Record<AttributeName, number>>>;
 
-const ZERO: EnvironmentDelta = { security: 0, comfort: 0 };
+/** 発火が及ぼす1件の環境変化（どの Zone の属性をどれだけ変えるか）。 */
+export interface EnvironmentChange {
+  readonly zoneId: string;
+  readonly attrs: ZoneAttributeDelta;
+}
 
 /** 仮の効果係数（監修待ち）。 */
 export const EVENT_EFFECT_PROVISIONAL = {
-  /** 遮蔽（cover）の中立点。これより高いと安全側、低いと不安側へ。 */
-  coverNeutral: 0.5,
-  /** cover 1単位あたりの security への寄与（遮蔽が高い＝隠れられる＝安全）。 */
-  coverToSecurity: 0.4,
-  /** 高所だが遮蔽のない場所の security 寄与（弱め）。 */
-  heightCoverToSecurity: 0.2,
-  /** 隠れ場所（資源）追加の効果。 */
-  hideBox: { security: 0.2, comfort: 0.1 },
+  /** 隠れ場所（資源）追加の属性寄与（家具 hiding_box に相当・B10）。 */
+  hideBox: { cover: 0.5, humanDistance: 0.2 },
 } as const;
 
+/** change.params から数値を取り出す（無ければ 0）。 */
+function num(change: StateChange, key: string): number {
+  const v = change.params?.[key];
+  return typeof v === 'number' ? v : 0;
+}
+
 /**
- * 1つの StateChange が代表 Zone の環境へ与える調整量を返す（純粋・仮値）。
- * 未知 command は無変化（0）。方向（符号）のみが本質で、値は監修で確定する。
+ * 1つの StateChange を「対象 Zone の属性デルタ」に変換する（純粋・仮値）。
+ * 対象 Zone（params.zone）が無い / 未知 command は null（効果なし）。方向（符号）のみが本質。
  */
-export function environmentEffect(change: StateChange): EnvironmentDelta {
-  const P = EVENT_EFFECT_PROVISIONAL;
-  const cover = typeof change.params?.cover === 'number' ? change.params.cover : undefined;
+export function environmentEffect(change: StateChange): EnvironmentChange | null {
+  const zoneId = typeof change.params?.zone === 'string' ? change.params.zone : undefined;
+  if (zoneId === undefined) return null;
+
   switch (change.command) {
     case 'setZoneCover':
-      return cover === undefined
-        ? ZERO
-        : { security: (cover - P.coverNeutral) * P.coverToSecurity, comfort: 0 };
+      return { zoneId, attrs: { cover: num(change, 'cover') } };
     case 'setZoneHeightCover':
-      return cover === undefined
-        ? ZERO
-        : { security: (cover - P.coverNeutral) * P.heightCoverToSecurity, comfort: 0 };
+      return { zoneId, attrs: { height: num(change, 'height'), cover: num(change, 'cover') } };
     case 'placeHideBox':
-      return { security: P.hideBox.security, comfort: P.hideBox.comfort };
+      return {
+        zoneId,
+        attrs: {
+          cover: EVENT_EFFECT_PROVISIONAL.hideBox.cover,
+          humanDistance: EVENT_EFFECT_PROVISIONAL.hideBox.humanDistance,
+        },
+      };
     default:
-      return ZERO;
+      return null;
   }
 }
 
-/** 2つの環境調整量を合成する（純粋・累積用）。 */
-export function combineDelta(a: EnvironmentDelta, b: EnvironmentDelta): EnvironmentDelta {
-  return { security: a.security + b.security, comfort: a.comfort + b.comfort };
+/** 2つの属性デルタを成分ごとに加算する（純粋・累積用）。 */
+export function mergeAttrDelta(a: ZoneAttributeDelta, b: ZoneAttributeDelta): ZoneAttributeDelta {
+  const out: Partial<Record<AttributeName, number>> = { ...a };
+  for (const [k, v] of Object.entries(b) as [AttributeName, number][]) {
+    out[k] = (out[k] ?? 0) + v;
+  }
+  return out;
 }

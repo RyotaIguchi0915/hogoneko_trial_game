@@ -71,10 +71,11 @@ export interface GameSnapshot {
    */
   readonly firedEventIds?: readonly string[];
   /**
-   * 発火が累積した環境調整（代表 Zone の security/comfort 加算・EP-2.09）。
-   * ⚠️ 派生ではなく「発火の結果として世界に加わった変化」の元データ。任意（後方互換）: absent は 0 で補完。
+   * 発火が累積した Zone 別の属性デルタ（Persisted・EP-3.03）。zoneId → 属性名 → 加算量。
+   * ⚠️ 「発火の結果として世界に加わった変化」の元データ（ZoneSecurity 等は保存せず再導出・AA-31）。
+   *    任意（後方互換）: absent は {} で補完。旧 v3 の envAdjust（代表 Zone 一律）は本フィールドへ移行せず破棄する。
    */
-  readonly envAdjust?: { readonly security: number; readonly comfort: number };
+  readonly zoneOverrides?: Readonly<Record<string, Readonly<Record<string, number>>>>;
 }
 
 export interface SaveMeta {
@@ -244,12 +245,17 @@ export function validateStructure(value: unknown): ValidationResult {
   if (data.traces !== undefined && !Array.isArray(data.traces)) {
     push('data.traces is invalid');
   }
-  // 発火状態（EP-2.09）も任意（後方互換）。firedEventIds は配列、envAdjust は数値2項。
+  // 発火状態も任意（後方互換）。firedEventIds は配列、zoneOverrides は object（EP-2.09/3.03）。
   if (data.firedEventIds !== undefined && !Array.isArray(data.firedEventIds)) {
     push('data.firedEventIds is invalid');
   }
-  if (data.envAdjust !== undefined && !nums(data.envAdjust, ['security', 'comfort'])) {
-    push('data.envAdjust is invalid');
+  if (
+    data.zoneOverrides !== undefined &&
+    (typeof data.zoneOverrides !== 'object' ||
+      data.zoneOverrides === null ||
+      Array.isArray(data.zoneOverrides))
+  ) {
+    push('data.zoneOverrides is invalid');
   }
 
   return { valid: errors.length === 0, errors };
