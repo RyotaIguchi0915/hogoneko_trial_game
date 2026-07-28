@@ -12,7 +12,7 @@ import type { TraceKind } from '@core/state/trace';
 const BEHAVIOR_TO_TRACE: Readonly<Record<Behavior, TraceKind | null>> = {
   grooming: 'shed_fur', // 毛づくろい → 毛が落ちている
   exploring: 'moved_object', // 探索 → 物の位置が変わっている
-  eating: 'food_reduced', // 採食 → 餌が減っている
+  eating: 'food_reduced', // 採食 → ごはんが減っている
   resting: 'warm_hollow', // 休息 → くぼみ・寝床の跡
   hiding: null, // 潜伏 → 跡を残さない
   alert: null, // 警戒 → 持続する跡を残さない

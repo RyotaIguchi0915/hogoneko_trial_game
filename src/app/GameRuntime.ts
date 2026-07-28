@@ -52,6 +52,15 @@ export type InterventionResult =
   | { readonly ok: true; readonly slotsLeft: number }
   | { readonly ok: false; readonly reason: 'away' | 'no-slots' };
 
+/** 去就の決定（EP-3.08）。迎える（adopt）／お別れする（return）。 */
+export type Decision = 'adopt' | 'return';
+
+/**
+ * 絆のティア（EP-3.08）。trust（真実・数値）から導く**質的カテゴリ**。
+ * ⚠️ L4 には数値でなくこのカテゴリだけを渡す（観測境界 I-1）。結末の出し分けに使う。
+ */
+export type BondTier = 'distant' | 'warming' | 'bonded';
+
 /**
  * Game Runtime — 5層貫通の合成ルート（合成層 src/app / EP-14・EP-2.05）
  *
@@ -83,6 +92,13 @@ export interface RuntimeReader {
    * ⚠️ pending 痕跡のクリアに影響されない安定スナップショット。数値を含まない（Phenomenon のみ・I-1）。
    */
   getObservation(): readonly Phenomenon[];
+  /** 去就の決定（未決定は null・EP-3.08）。 */
+  getDecision(): Decision | null;
+  /**
+   * 30日で育った絆のティア（trust 由来の質的カテゴリ・数値ではない・EP-3.08）。
+   * ⚠️ 結末画面の出し分け用。意味を持つのは deciding 以降。
+   */
+  getBondTier(): BondTier;
 }
 
 export interface GameRuntimeDeps {
@@ -121,6 +137,8 @@ export class GameRuntime {
   readonly #firedEventIds: Set<string>;
   /** 発火が累積した Zone 別の属性デルタ（Persisted・EP-3.03）。猫が対象 Zone に居る時だけ効く。 */
   #zoneOverrides: Map<string, ZoneAttributeDelta>;
+  /** 去就の決定（Persisted・deciding で確定・EP-3.08）。 */
+  #decision: Decision | null;
 
   private constructor(deps: GameRuntimeDeps) {
     const config = deps.config ?? DEFAULT_TRIAL_CONFIG;
@@ -145,6 +163,7 @@ export class GameRuntime {
       this.#pendingTraces = snapshot.traces ?? [];
       this.#firedEventIds = new Set(snapshot.firedEventIds ?? []);
       this.#zoneOverrides = new Map(Object.entries(snapshot.zoneOverrides ?? {}));
+      this.#decision = snapshot.decision ?? null;
     } else {
       this.#seed = deps.seed;
       this.#rng = createRng(deps.seed);
@@ -154,6 +173,7 @@ export class GameRuntime {
       this.#pendingTraces = [];
       this.#firedEventIds = new Set();
       this.#zoneOverrides = new Map();
+      this.#decision = null;
     }
 
     this.#catAccess = getSimulationStateAccess(this.#store);
@@ -192,7 +212,17 @@ export class GameRuntime {
       getActionSlots: () => this.#actionSlots,
       getObservationLog: () => this.#observationLog,
       getObservation: () => this.#lastObservation,
+      getDecision: () => this.#decision,
+      getBondTier: () => this.#bondTier(),
     };
+  }
+
+  /** trust（真実）→ 絆ティア（質的カテゴリ・数値は外に出さない・EP-3.08）。閾値は仮値（監修）。 */
+  #bondTier(): BondTier {
+    const trust = this.#catAccess.getCatState().relationship.trust;
+    if (trust >= 0.55) return 'bonded';
+    if (trust >= 0.25) return 'warming';
+    return 'distant';
   }
 
   /** 真実（Cat State を含む）の読み取り専用リーダ（開発ビルド限定・B4 §11.5 / EP-12）。 */
@@ -214,6 +244,7 @@ export class GameRuntime {
       simulation: { cat: this.#catAccess.getCatState() },
       observationLog: this.#observationLog,
       traces: this.#pendingTraces,
+      ...(this.#decision !== null ? { decision: this.#decision } : {}),
       firedEventIds: [...this.#firedEventIds],
       zoneOverrides: Object.fromEntries(this.#zoneOverrides),
     };
@@ -353,13 +384,23 @@ export class GameRuntime {
   }
 
   /**
-   * 結末アークを1段進める（deciding→ending→epilogue→reflection・EP-3.01）。UI の確認操作から呼ぶ。
-   * ⚠️ 去就の決定の中身・結末の意味づけ・演出は監修/OI-4（ここは遷移の機構のみ・プレースホルダ）。
+   * 去就を決める（deciding→ending・EP-3.08）。迎える(adopt)／お別れする(return)を記録して結末へ。
+   * ⚠️ 決定の中身・帰結の意味づけ・本文は監修。ここは「選択を記録し結末へ繋ぐ」機構のみ。
+   * deciding 以外では何もしない（冪等）。
+   */
+  decide(decision: Decision): void {
+    if (this.#store.getGamePhase() !== 'deciding') return;
+    this.#decision = decision;
+    this.#store.transitionGamePhase('ending');
+  }
+
+  /**
+   * 結末の語りを1段進める（ending→epilogue→reflection・EP-3.01）。UI の確認操作から呼ぶ。
+   * ⚠️ deciding→ending は decide() が担う（選択が要るため）。ここは選択後の語りを繋ぐだけ。
    * 進行不能なフェーズでは何もしない（現フェーズを返す）。
    */
   advancePhase(): GamePhase {
     const next: Partial<Record<GamePhase, GamePhase>> = {
-      deciding: 'ending',
       ending: 'epilogue',
       epilogue: 'reflection',
     };
@@ -369,7 +410,7 @@ export class GameRuntime {
   }
 
   /**
-   * 餌をやる（介入・B2 §4 / B9 §3.4）。行動枠を1消費し、猫の空腹を和らげる。
+   * ご飯をあげる（介入・B2 §4 / B9 §3.4）。行動枠を1消費し、猫の空腹を和らげる。
    * ⚠️ 猫を操作するのではなく、環境（資源）への働きかけの結果として状態が変わる（憲章 I-2）。
    *    Cat State は直接書き換えず、L2 権限（simulationAccess）＋純粋関数 feedCat 経由で更新する。
    * 在室 Segment で枠がある時のみ成功。観察は無制限・介入は有限の非対称（B2 §4）。

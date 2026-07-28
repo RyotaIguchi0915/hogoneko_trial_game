@@ -1,4 +1,5 @@
 import type { RestoreStatus, TrialPhase, GamePhase } from '@core/index';
+import type { Decision, BondTier } from '@app/index';
 import type { SpriteKey } from './sprites';
 
 /**
@@ -19,6 +20,10 @@ export interface AppView {
   readonly catSprite: SpriteKey | null;
   /** アプリ全体フェーズ（物語アーク・EP-3.01）。title/playing/deciding/ending/epilogue/reflection で描き分ける。 */
   readonly gamePhase: GamePhase;
+  /** 去就の決定（未決定は null・EP-3.08）。結末画面の出し分けに使う。 */
+  readonly decision: Decision | null;
+  /** 30日で育った絆のティア（trust 由来の質的カテゴリ・数値ではない・EP-3.08）。結末の出し分け用。 */
+  readonly bondTier: BondTier;
   /** 現 Segment に残る行動枠（B2 §4）。介入 UI の可否に使う。0 なら介入不可（不在 or 使い切り）。 */
   readonly actionSlots: number;
   /**

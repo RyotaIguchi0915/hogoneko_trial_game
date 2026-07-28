@@ -42,6 +42,8 @@ function view(overrides: Partial<AppView> = {}): AppView {
     observations: ['丸くなって休んでいる'],
     catSprite: 'cat_curled',
     gamePhase: 'playing',
+    decision: null,
+    bondTier: 'warming',
     actionSlots: 0,
     knowledgeNotes: [],
     ...overrides,

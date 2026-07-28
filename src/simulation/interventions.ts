@@ -11,11 +11,11 @@ import { clamp01 } from './catDynamics';
 
 /** 仮の介入効果量（監修待ち）。 */
 export const INTERVENTION_PROVISIONAL = {
-  /** 給餌で空腹が下がる量。 */
+  /** ご飯をあげたときに空腹が下がる量。 */
   feedHungerRelief: 0.4,
 } as const;
 
-/** 餌をやる: 空腹（hunger）を下げる（B9 §3.4「資源補充」相当）。純粋。 */
+/** ご飯をあげる: 空腹（hunger）を下げる（B9 §3.4「資源補充」相当）。純粋。 */
 export function feedCat(cat: CatState): CatState {
   return {
     ...cat,

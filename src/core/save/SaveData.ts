@@ -76,6 +76,11 @@ export interface GameSnapshot {
    *    任意（後方互換）: absent は {} で補完。旧 v3 の envAdjust（代表 Zone 一律）は本フィールドへ移行せず破棄する。
    */
   readonly zoneOverrides?: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  /**
+   * 去就の決定（Persisted・EP-3.08）。deciding で確定。未決定は absent。
+   * ⚠️ 型は素の Union（@app の Decision と同一値・L1 は上位層を import しないため）。
+   */
+  readonly decision?: 'adopt' | 'return';
 }
 
 export interface SaveMeta {
@@ -256,6 +261,10 @@ export function validateStructure(value: unknown): ValidationResult {
       Array.isArray(data.zoneOverrides))
   ) {
     push('data.zoneOverrides is invalid');
+  }
+  // 去就の決定（EP-3.08）も任意。存在するなら 'adopt' | 'return' のみ。
+  if (data.decision !== undefined && data.decision !== 'adopt' && data.decision !== 'return') {
+    push('data.decision is invalid');
   }
 
   return { valid: errors.length === 0, errors };

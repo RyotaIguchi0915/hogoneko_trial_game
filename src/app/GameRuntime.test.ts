@@ -134,15 +134,15 @@ describe('GameRuntime — Segment ループが Simulation を駆動する（EP-2
   });
 });
 
-describe('GameRuntime — 介入（餌やり）と行動枠（EP-2.08 / B2 §4）', () => {
-  it('起動直後（Seg0=未明=不在）は行動枠0・給餌できない', () => {
+describe('GameRuntime — 介入（ご飯をあげる）と行動枠（EP-2.08 / B2 §4）', () => {
+  it('起動直後（Seg0=未明=不在）は行動枠0・ご飯をあげられない', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
     expect(rt.reader.getActionSlots()).toBe(0);
     expect(rt.feed()).toEqual({ ok: false, reason: 'away' });
     rt.dispose();
   });
 
-  it('在室 Segment では枠2・給餌で枠が減り、空腹が下がる', () => {
+  it('在室 Segment では枠2・ご飯をあげると枠が減り、空腹が下がる', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
     rt.advanceSegment(); // Seg1=朝=在室
     expect(rt.reader.getActionSlots()).toBe(2);
@@ -155,7 +155,7 @@ describe('GameRuntime — 介入（餌やり）と行動枠（EP-2.08 / B2 §4�
     rt.dispose();
   });
 
-  it('枠を使い切ると給餌できない（観察無制限・介入有限の非対称）', () => {
+  it('枠を使い切るとご飯をあげられない（観察無制限・介入有限の非対称）', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
     rt.advanceSegment();
     rt.feed();
@@ -364,15 +364,37 @@ describe('GameRuntime — トライアル物語アーク（EP-3.01）', () => {
     rt.dispose();
   });
 
-  it('advancePhase() で deciding→ending→epilogue→reflection と進み、reflection で止まる', () => {
+  it('decide()→advancePhase() で deciding→ending→epilogue→reflection と進み、reflection で止まる（EP-3.08）', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
     rt.begin();
     playToEnd(rt); // deciding
-    expect(rt.advancePhase()).toBe('ending');
+    // deciding→ending は decide()（選択が要る）。advancePhase では動かない。
+    expect(rt.advancePhase()).toBe('deciding'); // 選択前は進まない
+    rt.decide('adopt');
+    expect(rt.reader.getGamePhase()).toBe('ending');
+    expect(rt.reader.getDecision()).toBe('adopt');
     expect(rt.advancePhase()).toBe('epilogue');
     expect(rt.advancePhase()).toBe('reflection');
     expect(rt.advancePhase()).toBe('reflection'); // 終端（それ以上進まない）
     rt.dispose();
+  });
+
+  it('decide は deciding 以外では効かない／決定と絆ティアがセーブ往復で保たれる（EP-3.08）', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 1 });
+    rt1.decide('adopt'); // まだ playing 前 → 無効
+    expect(rt1.reader.getDecision()).toBeNull();
+    rt1.begin();
+    playToEnd(rt1);
+    rt1.decide('return');
+    expect(rt1.reader.getDecision()).toBe('return');
+    rt1.save();
+    rt1.dispose();
+
+    const rt2 = GameRuntime.create({ storage, clock, seed: 1 });
+    expect(rt2.reader.getDecision()).toBe('return'); // 復元
+    expect(['distant', 'warming', 'bonded']).toContain(rt2.reader.getBondTier());
+    rt2.dispose();
   });
 
   it('begin() を呼ばなければ 30日消化でも deciding に遷移しない（アークは opt-in）', () => {
