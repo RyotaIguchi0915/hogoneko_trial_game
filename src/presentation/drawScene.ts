@@ -39,13 +39,14 @@ export type Scene2D = Pick<
   textBaseline: CanvasTextBaseline;
 };
 
+/** 「やさしい観察画」の温かい配色（OI-4・docs/17）。本番アートは OI-6。 */
 const COLORS = {
-  bg: '#f4f2ee',
-  roomStroke: '#c9c4bc',
-  floor: '#e9e5df',
-  furniture: '#d8d2c8',
-  cat: '#8a8177',
-  text: '#4a4a4a',
+  bg: '#fff8ea', // 陽だまりのクリーム
+  roomStroke: '#ecdfc9',
+  floor: '#f3e6cf',
+  furniture: '#e7d6b9',
+  cat: '#c2a488', // まるくやさしい猫（ellipse フォールバック時）
+  text: '#5d4c3f',
 } as const;
 
 /**
@@ -108,7 +109,8 @@ export function drawScene(
   ctx.fillStyle = COLORS.text;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '16px system-ui, sans-serif';
+  ctx.font =
+    '600 16px "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif';
   const line = view.observations[0] ?? '…';
   ctx.fillText(line, width / 2, roomY + roomH + margin * 0.5);
 }
