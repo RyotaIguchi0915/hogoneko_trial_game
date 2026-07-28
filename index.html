@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>保護猫トライアル30日</title>
+    <!-- テーマ下地（EP-3.12）: フォーム/スクロールバーの配色を OS に追従させ、
+         main の外側（オーバースクロール等）に出る body の地色もライト/ダークで揃える。
+         画面本体の配色は theme.ts（React 側）が持つ。 -->
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        background: #f7efe0;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #211c17;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

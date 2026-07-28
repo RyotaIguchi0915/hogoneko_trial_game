@@ -1,5 +1,6 @@
 import type { AppView } from './appView';
 import type { SpriteKey } from './sprites';
+import { type SceneColors, SCENE_LIGHT } from './theme';
 
 /** 読み込み済みスプライト（Scene が渡す）。未読込のキーは省略され、幾何プレースホルダにフォールバック。 */
 export type SpriteImages = Partial<Record<SpriteKey, CanvasImageSource>>;
@@ -39,19 +40,10 @@ export type Scene2D = Pick<
   textBaseline: CanvasTextBaseline;
 };
 
-/** 「やさしい観察画」の温かい配色（OI-4・docs/17）。本番アートは OI-6。 */
-const COLORS = {
-  bg: '#fff8ea', // 陽だまりのクリーム
-  roomStroke: '#ecdfc9',
-  floor: '#f3e6cf',
-  furniture: '#e7d6b9',
-  cat: '#c2a488', // まるくやさしい猫（ellipse フォールバック時）
-  text: '#5d4c3f',
-} as const;
-
 /**
  * 論理サイズ (width×height, CSS px) に対してシーンを描く。
  * DPR スケールは呼び出し側（Scene.tsx）が ctx に適用済みである前提。
+ * ⚠️ 配色はテーマ（ライト/ダーク・EP-3.12）を呼び出し側が渡す。既定はライト（テスト・後方互換）。
  */
 export function drawScene(
   ctx: Scene2D,
@@ -59,11 +51,12 @@ export function drawScene(
   width: number,
   height: number,
   sprites: SpriteImages = {},
+  colors: SceneColors = SCENE_LIGHT,
 ): void {
   ctx.clearRect(0, 0, width, height);
 
   // 背景
-  ctx.fillStyle = COLORS.bg;
+  ctx.fillStyle = colors.bg;
   ctx.fillRect(0, 0, width, height);
 
   // 部屋の枠（構図固定・B3 ③: 毎回同じ画。変わるのは中身だけ）
@@ -73,9 +66,9 @@ export function drawScene(
   const roomW = width - margin * 2;
   const roomH = height - margin * 2;
 
-  ctx.fillStyle = COLORS.floor;
+  ctx.fillStyle = colors.floor;
   ctx.fillRect(roomX, roomY, roomW, roomH);
-  ctx.strokeStyle = COLORS.roomStroke;
+  ctx.strokeStyle = colors.roomStroke;
   ctx.lineWidth = 2;
   ctx.strokeRect(roomX, roomY, roomW, roomH);
 
@@ -84,7 +77,7 @@ export function drawScene(
   const boxH = roomH * 0.22;
   const boxX = roomX + roomW - boxW - roomW * 0.08;
   const boxY = roomY + roomH - boxH - roomH * 0.08;
-  ctx.fillStyle = COLORS.furniture;
+  ctx.fillStyle = colors.furniture;
   ctx.fillRect(boxX, boxY, boxW, boxH);
 
   // 猫: 観察可能な姿勢（catSprite）があるときだけ、部屋の中央にそっと置く。
@@ -98,7 +91,7 @@ export function drawScene(
       const size = Math.min(roomW, roomH) * 0.42;
       ctx.drawImage(image, cx - size / 2, cy - size / 2, size, size);
     } else {
-      ctx.fillStyle = COLORS.cat;
+      ctx.fillStyle = colors.cat;
       ctx.beginPath();
       ctx.ellipse(cx, cy + roomH * 0.05, roomW * 0.1, roomH * 0.07, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -106,7 +99,7 @@ export function drawScene(
   }
 
   // 観察テキスト（見えた事実のみ）。アクセシブルな本文は App の caption 側にも持つ。
-  ctx.fillStyle = COLORS.text;
+  ctx.fillStyle = colors.text;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font =
