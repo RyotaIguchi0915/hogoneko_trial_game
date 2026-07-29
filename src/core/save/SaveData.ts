@@ -95,6 +95,12 @@ export interface GameSnapshot {
    *    任意（後方互換）: absent は [] で補完（B4 §9.6 追加フィールド・version bump 不要）。
    */
   readonly hypotheses?: readonly string[];
+  /**
+   * あなたの居場所（Persisted・EP-4.04c）。全 Zone の humanDistance に効く。
+   * ⚠️ 型は素の Union（@app の HumanDistance と同一値・L1 は上位層を import しないため）。
+   *    任意（後方互換）: absent は 'normal' で補完（B4 §9.6 追加フィールド・version bump 不要）。
+   */
+  readonly humanDistance?: 'near' | 'normal' | 'far';
 }
 
 export interface SaveMeta {
@@ -292,6 +298,15 @@ export function validateStructure(value: unknown): ValidationResult {
   // 立てた仮説（EP-4.03）も任意（後方互換）。存在するなら文字列配列。
   if (data.hypotheses !== undefined && !Array.isArray(data.hypotheses)) {
     push('data.hypotheses is invalid');
+  }
+  // あなたの居場所（EP-4.04c）も任意。存在するなら3値のいずれか。
+  if (
+    data.humanDistance !== undefined &&
+    data.humanDistance !== 'near' &&
+    data.humanDistance !== 'normal' &&
+    data.humanDistance !== 'far'
+  ) {
+    push('data.humanDistance is invalid');
   }
 
   return { valid: errors.length === 0, errors };

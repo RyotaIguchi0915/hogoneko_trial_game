@@ -1,5 +1,5 @@
 import type { RestoreStatus, TrialPhase, GamePhase } from '@core/index';
-import type { Decision, BondTier } from '@app/index';
+import type { Decision, BondTier, HumanDistance } from '@app/index';
 import type { SpriteKey } from './sprites';
 
 /**
@@ -52,6 +52,11 @@ export interface AppView {
    *    正誤を示す印（✓/✗）を付けてはならない（docs/16 §2.8 U-8）。
    */
   readonly hypotheses: readonly HypothesisView[];
+  /**
+   * いまのあなたの居場所（EP-4.04c）。**プレイヤー自身の状態**であって猫の状態ではない。
+   * ⚠️ ここから猫がどう感じているかは分からない。分かるのは観察だけ（憲章 I-1）。
+   */
+  readonly humanDistance: HumanDistance;
   /**
    * 観察ノート（これまで見た事実・頻度順・ローカライズ済み・EP-2.07）。
    * Player Knowledge（観察履歴から再生成）の静かな提示。数値は「観測回数」であり Cat State ではない（I-1）。
