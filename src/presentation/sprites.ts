@@ -75,12 +75,7 @@ const CAT_GROOMING = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1
 </g></svg>`;
 
 export type SpriteKey =
-  | 'cat_sitting'
-  | 'cat_curled'
-  | 'cat_walking'
-  | 'cat_alert'
-  | 'cat_eating'
-  | 'cat_grooming';
+  'cat_sitting' | 'cat_curled' | 'cat_walking' | 'cat_alert' | 'cat_eating' | 'cat_grooming';
 
 function dataUri(svg: string): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
