@@ -69,8 +69,8 @@ export type InterventionResult =
  */
 export type Decision = 'adopt' | 'extend' | 'return';
 
-/** 部屋を整える設置（環境アクション・EP-4.04）。隠れ家／高い台。 */
-export type PlacementKind = 'hiding_place' | 'high_perch';
+/** 部屋を整える設置（環境アクション・EP-4.04）。隠れ家／高い台／ごはんの位置。 */
+export type PlacementKind = 'hiding_place' | 'high_perch' | 'quiet_food';
 
 /** 設置の結果。既に置いてあれば失敗を返す（UI が静かに提示）。 */
 export type PlacementResult =
@@ -97,6 +97,10 @@ const PLACEMENTS: Readonly<Record<PlacementKind, { zoneId: string; attrs: ZoneAt
     zoneId: 'zone.vantage',
     attrs: { height: 0.6, cover: 0.2, sightline: 0.4, exits: 1 },
   },
+  // ごはんを静かな隅へ（資源配置・docs/18 B-D）。食事の場所は人の動線上（open_floor）にある。
+  // ⚠️ 隠れ家（refuge を安全にする）とは**別の経路**——「人のそばでも落ち着ける」ようにする働きかけ。
+  //    隠れ好きの子には効きにくく、人のそばに居たい子には効く。どちらになるかは profile 次第（I-2）。
+  quiet_food: { zoneId: 'zone.open_floor', attrs: { trafficLevel: -0.4, noiseLevel: -0.3 } },
 };
 
 /**

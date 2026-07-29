@@ -130,6 +130,28 @@ describe('GameRuntime — 部屋を整える: 環境アクション（EP-4.04）
     rt2.dispose();
   });
 
+  it('ごはんを静かな隅へ（quiet_food）も設置でき、保存される（EP-4.04b）', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 42 });
+    rt1.begin();
+    expect(rt1.placeItem('quiet_food')).toEqual({ ok: true });
+    rt1.save();
+    rt1.dispose();
+    const rt2 = GameRuntime.create({ storage, clock, seed: 42 });
+    expect(rt2.reader.getPlacements()).toContain('quiet_food');
+    rt2.dispose();
+  });
+
+  it('3つの設置は互いに独立して置ける（別々の Zone に効く）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.begin();
+    for (const k of ['hiding_place', 'high_perch', 'quiet_food'] as const) {
+      expect(rt.placeItem(k)).toEqual({ ok: true });
+    }
+    expect(rt.reader.getPlacements()).toHaveLength(3);
+    rt.dispose();
+  });
+
   it('合う環境（遮蔽好きの子に隠れ家）を用意すると落ち着き、信頼が育ちやすい（EP-4.04 の肝）', () => {
     // seed=2 は神経質・遮蔽好き（EP-4.01 診断）。素の部屋では萎縮する。
     const runTrust = (place: boolean) => {
