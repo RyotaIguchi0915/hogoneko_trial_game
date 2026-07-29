@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { PlayerKnowledge } from './PlayerKnowledge';
-import {
-  HYPOTHESIS_TEMPLATES,
-  availableHypotheses,
-  isKnownHypothesis,
-  isDetailed,
-  resolvedDescriptor,
-} from './hypotheses';
+import { HYPOTHESIS_TEMPLATES, availableHypotheses, isKnownHypothesis } from './hypotheses';
 
 /** 指定の現象だけを見た状態の Player Knowledge（真実は登場しない・G-2）。 */
 function knowledgeOf(descriptors: readonly string[]): PlayerKnowledge {
@@ -58,30 +52,13 @@ describe('仮説 — 観測したものからしか立てられない（docs/06:
   });
 });
 
-describe('仮説 — 唯一の支援は描写解像度（docs/06:681・採点しない）', () => {
-  it('仮説を持つと、その仮説に関わる現象だけ詳しくなる', () => {
-    const formed = ['hypothesis.likes_height'];
-    expect(isDetailed('phenomenon.at_vantage', formed)).toBe(true);
-    expect(isDetailed('phenomenon.at_refuge', formed)).toBe(false);
-  });
-
-  it('仮説を持たなければ元の語のまま', () => {
-    expect(resolvedDescriptor('phenomenon.at_vantage', [])).toBe('phenomenon.at_vantage');
-  });
-
-  it('仮説を持つと詳しい版のキーになる', () => {
-    expect(resolvedDescriptor('phenomenon.at_vantage', ['hypothesis.likes_height'])).toBe(
-      'phenomenon.at_vantage.detailed',
-    );
-  });
-
-  it('⚠️ 正誤は関与しない — どの仮説を持っても対応現象が等しく詳しくなる', () => {
-    // 「合っているか」を判定する経路はそもそも存在しない（真実を参照しない・G-2）。
-    // 外れた仮説を冷遇しないこと＝解像度は注意の反映であって正解の報酬ではない（docs/06:681）。
+describe('仮説 — 支持と反証の定義（EP-4.05 の材料）', () => {
+  it('全テンプレが支持・反証の両方を定義している（対比観測が成立しうる）', () => {
     for (const t of HYPOTHESIS_TEMPLATES) {
-      for (const d of t.detailFor) {
-        expect(isDetailed(d, [t.id])).toBe(true);
-      }
+      expect(t.supportedBy.length).toBeGreaterThan(0);
+      expect(t.contrastedBy.length).toBeGreaterThan(0);
+      // 同じ現象が支持でも反証でもある、という矛盾を持たない。
+      for (const d of t.supportedBy) expect(t.contrastedBy).not.toContain(d);
     }
   });
 });
