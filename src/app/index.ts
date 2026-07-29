@@ -11,4 +11,5 @@ export type {
   PlacementKind,
   PlacementResult,
   HypothesisResult,
+  HumanDistance,
 } from './GameRuntime';

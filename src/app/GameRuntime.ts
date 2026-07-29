@@ -104,6 +104,25 @@ const PLACEMENTS: Readonly<Record<PlacementKind, { zoneId: string; attrs: ZoneAt
 };
 
 /**
+ * あなたの居場所（人の距離・環境アクション・EP-4.04c / docs/18 B-D）。
+ * ⚠️ これは「猫を呼ぶ」操作ではない（憲章 I-2）。**自分がどこにいるかを変えるだけ**で、
+ *    猫が近づいてくる保証はどこにもない。近づけば距離は縮むが、その子が落ち着けるとは限らない。
+ */
+export type HumanDistance = 'near' | 'normal' | 'far';
+
+/**
+ * 人の距離 → 全 Zone の humanDistance への寄与（仮値=監修・docs/19）。
+ * ⚠️ humanDistance が高い＝人から遠い＝安心しやすい（`zone.ts` の security 重み）。
+ *    したがって「離れる」は落ち着かせ、「そばにいる」は落ち着きにくくする。
+ *    ただし社交的な子は近くでも信頼が育つ（`updateTrustDaily` の sociability）——効き方は個体次第。
+ */
+const HUMAN_DISTANCE_DELTA: Readonly<Record<HumanDistance, number>> = {
+  near: -0.15,
+  normal: 0,
+  far: 0.15,
+};
+
+/**
  * この子とどれだけ通じ合えたか（EP-3.08 / EP-4.06）。trust（真実・数値）から導く**質的カテゴリ**。
  * ⚠️ 「懐き度」の数値メーターではない（憲章 I-1）。EP-4.04 以降 trust は「この子の性質を読み、環境と世話で
  *    安心を満たせたか」を反映する（合う環境→落ち着く→trust）。ゆえに本ティアは**理解して寄り添えた度合い**を映す。
@@ -152,6 +171,11 @@ export interface RuntimeReader {
   getBondTier(): BondTier;
   /** 設置済みの環境（EP-4.04）。UI の可否用（Player 側の情報・Cat State ではない）。 */
   getPlacements(): readonly string[];
+  /**
+   * いまのあなたの居場所（EP-4.04c）。**プレイヤー自身の状態**であって猫の状態ではない。
+   * ⚠️ 猫がどう感じているかは、ここからは分からない（観察するしかない・I-1）。
+   */
+  getHumanDistance(): HumanDistance;
   /**
    * プレイヤーが立てている仮説（EP-4.03）。**プレイヤー自身の言葉**であって猫の真実ではない。
    * ⚠️ 当たっているかどうかは、ここにも他のどこにも無い（採点しない・docs/06:616）。
@@ -211,6 +235,8 @@ export class GameRuntime {
    * （Player Knowledge が派生値として再生成されるのとは性質が違う・B4 §9.2）。
    */
   #hypotheses: Set<string>;
+  /** あなたの居場所（Persisted・EP-4.04c）。全 Zone の humanDistance に効く。 */
+  #humanDistance: HumanDistance;
   /** 情動アークのペース補正（本編30日=1・短縮デモで日数比・EP-3.09）。日次 Trust の育ちに掛ける。 */
   readonly #paceScale: number;
   /**
@@ -248,6 +274,7 @@ export class GameRuntime {
       this.#placements = new Set(snapshot.placements ?? []);
       // 未知IDは静かに捨てる（語彙を減らした版のセーブを読んでも壊れない）。
       this.#hypotheses = new Set((snapshot.hypotheses ?? []).filter(isKnownHypothesis));
+      this.#humanDistance = snapshot.humanDistance ?? 'normal';
     } else {
       this.#seed = deps.seed;
       this.#rng = createRng(deps.seed);
@@ -260,6 +287,7 @@ export class GameRuntime {
       this.#decision = null;
       this.#placements = new Set();
       this.#hypotheses = new Set();
+      this.#humanDistance = 'normal';
     }
 
     // この子の素性を seed から生成（profile ストリームは消費位置に非依存＝復元後も同一個体・EP-4.01）。
@@ -304,6 +332,7 @@ export class GameRuntime {
       getBondTier: () => this.#bondTier(),
       getPlacements: () => [...this.#placements],
       getHypotheses: () => [...this.#hypotheses],
+      getHumanDistance: () => this.#humanDistance,
       getAvailableHypotheses: () => this.#availableHypotheses(),
     };
   }
@@ -341,6 +370,7 @@ export class GameRuntime {
       zoneOverrides: Object.fromEntries(this.#zoneOverrides),
       placements: [...this.#placements],
       hypotheses: [...this.#hypotheses],
+      humanDistance: this.#humanDistance,
     };
   }
 
@@ -371,13 +401,28 @@ export class GameRuntime {
   /** 猫が今いる Zone の環境（その Zone の発火オーバレイを反映して再導出・EP-3.03）。 */
   #currentEnvironment(): { readonly zoneSecurity: number; readonly zoneComfort: number } {
     const zone = this.#catZone();
-    const e = this.#env.environmentFor(zone, this.#zoneOverrides.get(zone));
+    const e = this.#env.environmentFor(zone, this.#effectiveOverrides().get(zone));
     return { zoneSecurity: e.security, zoneComfort: e.comfort };
+  }
+
+  /**
+   * 実効の Zone オーバレイ（イベント・設置の累積 ＋ **あなたの居場所**・EP-4.04c）。
+   * ⚠️ 人の距離は特定の Zone ではなく**部屋ぜんたい**に効く（どこに居ても人との距離は変わるため）。
+   *    保存するのは `#humanDistance`（元データ）だけで、この合成は毎回導出する（AA-31）。
+   */
+  #effectiveOverrides(): Map<string, ZoneAttributeDelta> {
+    const delta = HUMAN_DISTANCE_DELTA[this.#humanDistance];
+    if (delta === 0) return this.#zoneOverrides;
+    const merged = new Map(this.#zoneOverrides);
+    for (const id of this.#env.zoneIds()) {
+      merged.set(id, mergeAttrDelta(merged.get(id) ?? {}, { humanDistance: delta }));
+    }
+    return merged;
   }
 
   /** ゾーン選択の候補（全 Zone の導出環境・Zone 別発火オーバレイ反映・EP-3.02/3.03）。 */
   #zoneChoices(): readonly { id: string; type: string; security: number; comfort: number }[] {
-    return this.#env.allZones(this.#zoneOverrides).map((z) => ({
+    return this.#env.allZones(this.#effectiveOverrides()).map((z) => ({
       id: z.zoneId,
       type: z.type,
       security: z.security,
@@ -567,6 +612,19 @@ export class GameRuntime {
     this.#zoneOverrides.set(zoneId, mergeAttrDelta(cur, attrs));
     this.#placements.add(kind);
     return { ok: true };
+  }
+
+  /**
+   * あなたの居場所を変える（環境アクション・EP-4.04c・docs/18 B-D）。
+   *
+   * ⚠️ **猫を呼ぶ操作ではない**（憲章 I-2）。動かせるのは自分だけで、猫が近づいてくる保証はない。
+   *    近づけば猫にとっての「人との距離」は縮む——それが落ち着くことかどうかは、その子次第。
+   * ⚠️ 行動枠を消費しない。居場所は「介入」ではなく**状態**であり、観察と同じく無制限（B2 §4）。
+   * 本編プレイ中（playing）のみ有効。
+   */
+  setHumanDistance(distance: HumanDistance): void {
+    if (this.#store.getGamePhase() !== 'playing') return;
+    this.#humanDistance = distance;
   }
 
   /** いま立てられる仮説（観察履歴からのみ算出・真実を参照しない・G-2）。 */

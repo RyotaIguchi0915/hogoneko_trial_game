@@ -87,6 +87,7 @@ export function computeView(
     catPlace,
     actionSlots: runtime.reader.getActionSlots(),
     placements: runtime.reader.getPlacements(),
+    humanDistance: runtime.reader.getHumanDistance(),
     hypotheses,
     knowledgeNotes,
   };

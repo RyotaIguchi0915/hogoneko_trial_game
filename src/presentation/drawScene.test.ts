@@ -68,6 +68,7 @@ function view(overrides: Partial<AppView> = {}): AppView {
     bondTier: 'warming',
     actionSlots: 0,
     placements: [],
+    humanDistance: 'normal',
     hypotheses: [],
     knowledgeNotes: [],
     ...overrides,

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { RestoreStatus } from '@core/index';
-import type { GameRuntime, Decision, BondTier, PlacementKind } from '@app/index';
+import type { GameRuntime, Decision, BondTier, PlacementKind, HumanDistance } from '@app/index';
 import { Scene } from './Scene';
 import { HypothesisNote } from './HypothesisNote';
+import { DistanceControl } from './DistanceControl';
 import { computeView } from './bootstrap';
 import type { AppView } from './appView';
 import { WATCH_TEMPO_MS, isWatchable, shouldStopWatching } from './watch';
@@ -221,6 +222,11 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
   const onPlace = (kind: PlacementKind) => {
     runtime.placeItem(kind); // 部屋を整える（環境を変える・猫は操作しない I-2・EP-4.04）
     runtime.save(); // 設置は永続（zoneOverrides / placements）→ 保存
+    refresh();
+  };
+  const onDistance = (next: HumanDistance) => {
+    runtime.setHumanDistance(next); // 自分が動くだけ。猫が来る保証はない（I-2・EP-4.04c）
+    runtime.save(); // 居場所は永続（次の Segment から環境に効く）
     refresh();
   };
   const onToggleHypothesis = (id: string) => {
@@ -462,6 +468,14 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
             })}
           </div>
         </div>
+
+        {/* あなたの居場所（EP-4.04c）。動かせるのは自分だけ——猫が来る保証はない（I-2）。 */}
+        <DistanceControl
+          tokens={T}
+          value={view.humanDistance}
+          onChange={onDistance}
+          disabled={watching}
+        />
 
         {/* 観察ノート（Player Knowledge・EP-2.07）。これまで見た事実だけをやさしく並べる（解釈しない・B7）。 */}
         {view.knowledgeNotes.length > 0 && (
