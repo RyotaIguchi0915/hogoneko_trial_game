@@ -536,6 +536,20 @@ describe('GameRuntime — トライアル物語アーク（EP-3.01）', () => {
     rt2.dispose();
   });
 
+  it('「もう少し見守る」(extend) も決定でき、保存される（3結末等価・EP-4.06）', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 1 });
+    rt1.begin();
+    playToEnd(rt1);
+    rt1.decide('extend');
+    expect(rt1.reader.getDecision()).toBe('extend');
+    rt1.save();
+    rt1.dispose();
+    const rt2 = GameRuntime.create({ storage, clock, seed: 1 });
+    expect(rt2.reader.getDecision()).toBe('extend'); // 復元
+    rt2.dispose();
+  });
+
   it('begin() を呼ばなければ 30日消化でも deciding に遷移しない（アークは opt-in）', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
     playToEnd(rt); // begin() 未呼び出し → gamePhase は booting のまま
