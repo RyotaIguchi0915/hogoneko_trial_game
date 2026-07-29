@@ -197,6 +197,9 @@ left. The whole body is visible and centered. The mood is quiet and gentle.
 
 ## 5. ポーズ展開（6種・現象語彙と1対1）
 
+⚠️ `phenomenon.sudden_noise`（EP-4.02 実装済）は **subject が猫ではなく音**なので、対応するポーズを持たない。
+音は観察文の先頭に出るだけで、**絵は続く猫の姿勢だけで反応を語る**（`docs/16` §4.4）。
+
 ### 5.1 各ポーズのプロンプト
 
 **共通**: §2 の基準画プロンプトから `sitting upright with front paws together` を差し替え、他は一字一句変えない。
