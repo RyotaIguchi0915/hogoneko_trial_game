@@ -46,6 +46,9 @@ import {
   toPhenomena,
   tracesToPhenomena,
   soundToPhenomena,
+  derivePlayerKnowledge,
+  availableHypotheses,
+  isKnownHypothesis,
   type Phenomenon,
 } from '@perception/index';
 import { buildDefaultEnvironment } from './environment';
@@ -71,6 +74,14 @@ export type PlacementKind = 'hiding_place' | 'high_perch';
 /** 設置の結果。既に置いてあれば失敗を返す（UI が静かに提示）。 */
 export type PlacementResult =
   { readonly ok: true } | { readonly ok: false; readonly reason: 'already-placed' | 'not-playing' };
+
+/**
+ * 仮説の操作結果（EP-4.03）。formed=true なら立てた、false なら下ろした（トグル）。
+ * ⚠️ 「合っていた／外れていた」は**返らない**。正誤は存在しない情報として扱う（docs/06:616）。
+ */
+export type HypothesisResult =
+  | { readonly ok: true; readonly formed: boolean }
+  | { readonly ok: false; readonly reason: 'unknown' | 'not-observed' };
 
 /**
  * 設置種別 → 対象 Zone とその属性デルタ（EP-4.04・仮値=監修）。
@@ -136,6 +147,16 @@ export interface RuntimeReader {
   getBondTier(): BondTier;
   /** 設置済みの環境（EP-4.04）。UI の可否用（Player 側の情報・Cat State ではない）。 */
   getPlacements(): readonly string[];
+  /**
+   * プレイヤーが立てている仮説（EP-4.03）。**プレイヤー自身の言葉**であって猫の真実ではない。
+   * ⚠️ 当たっているかどうかは、ここにも他のどこにも無い（採点しない・docs/06:616）。
+   */
+  getHypotheses(): readonly string[];
+  /**
+   * いま立てられる仮説（EP-4.03）。観察履歴に現れた現象からのみ（docs/06:660）。
+   * ⚠️ 見ていないことについては、推し量る言葉すら持てない——観測境界そのもの。
+   */
+  getAvailableHypotheses(): readonly string[];
 }
 
 export interface GameRuntimeDeps {
@@ -180,6 +201,11 @@ export class GameRuntime {
   #decision: Decision | null;
   /** プレイヤーが設置した環境の種別（Persisted・EP-4.04）。効果は #zoneOverrides に載る。本集合は UI の可否用。 */
   #placements: Set<string>;
+  /**
+   * プレイヤーが立てた仮説（Persisted・EP-4.03）。**観察履歴から導出できない**ので保存が要る
+   * （Player Knowledge が派生値として再生成されるのとは性質が違う・B4 §9.2）。
+   */
+  #hypotheses: Set<string>;
   /** 情動アークのペース補正（本編30日=1・短縮デモで日数比・EP-3.09）。日次 Trust の育ちに掛ける。 */
   readonly #paceScale: number;
   /**
@@ -215,6 +241,8 @@ export class GameRuntime {
       this.#zoneOverrides = new Map(Object.entries(snapshot.zoneOverrides ?? {}));
       this.#decision = snapshot.decision ?? null;
       this.#placements = new Set(snapshot.placements ?? []);
+      // 未知IDは静かに捨てる（語彙を減らした版のセーブを読んでも壊れない）。
+      this.#hypotheses = new Set((snapshot.hypotheses ?? []).filter(isKnownHypothesis));
     } else {
       this.#seed = deps.seed;
       this.#rng = createRng(deps.seed);
@@ -226,6 +254,7 @@ export class GameRuntime {
       this.#zoneOverrides = new Map();
       this.#decision = null;
       this.#placements = new Set();
+      this.#hypotheses = new Set();
     }
 
     // この子の素性を seed から生成（profile ストリームは消費位置に非依存＝復元後も同一個体・EP-4.01）。
@@ -269,6 +298,8 @@ export class GameRuntime {
       getDecision: () => this.#decision,
       getBondTier: () => this.#bondTier(),
       getPlacements: () => [...this.#placements],
+      getHypotheses: () => [...this.#hypotheses],
+      getAvailableHypotheses: () => this.#availableHypotheses(),
     };
   }
 
@@ -304,6 +335,7 @@ export class GameRuntime {
       firedEventIds: [...this.#firedEventIds],
       zoneOverrides: Object.fromEntries(this.#zoneOverrides),
       placements: [...this.#placements],
+      hypotheses: [...this.#hypotheses],
     };
   }
 
@@ -528,6 +560,31 @@ export class GameRuntime {
     this.#zoneOverrides.set(zoneId, mergeAttrDelta(cur, attrs));
     this.#placements.add(kind);
     return { ok: true };
+  }
+
+  /** いま立てられる仮説（観察履歴からのみ算出・真実を参照しない・G-2）。 */
+  #availableHypotheses(): readonly string[] {
+    return availableHypotheses(derivePlayerKnowledge(this.#observationLog));
+  }
+
+  /**
+   * 仮説を立てる／下ろす（EP-4.03・docs/18 B-C）。同じIDをもう一度呼ぶと下ろす（トグル）。
+   *
+   * ⚠️ **観測していない現象についての仮説は立てられない**（docs/06:660）。見ていない相手について
+   *    推し量る言葉は持てない——難易度調整ではなく観測境界そのもの。
+   * ⚠️ **正誤を判定しない**（docs/06:616）。CatProfile（真実）とは決して照合しない。
+   *    仮説がもたらすのは描写解像度だけで、当たり外れの通知は一切ない。
+   * ⚠️ 下ろすことを妨げない。考えが変わるのは観察の自然な一部であって、失敗ではない（I-10）。
+   */
+  toggleHypothesis(id: string): HypothesisResult {
+    if (!isKnownHypothesis(id)) return { ok: false, reason: 'unknown' };
+    if (this.#hypotheses.has(id)) {
+      this.#hypotheses.delete(id);
+      return { ok: true, formed: false };
+    }
+    if (!this.#availableHypotheses().includes(id)) return { ok: false, reason: 'not-observed' };
+    this.#hypotheses.add(id);
+    return { ok: true, formed: true };
   }
 
   /**

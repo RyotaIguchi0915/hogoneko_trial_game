@@ -16,3 +16,13 @@ export {
   type PlayerKnowledge,
   type ObservedPhenomenonSummary,
 } from './PlayerKnowledge';
+
+// 仮説 — プレイヤーが観察から推し量って持つもの（採点しない・真実を参照しない・G-2）。
+export {
+  HYPOTHESIS_TEMPLATES,
+  availableHypotheses,
+  isKnownHypothesis,
+  isDetailed,
+  resolvedDescriptor,
+  type HypothesisTemplate,
+} from './hypotheses';

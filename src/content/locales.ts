@@ -26,5 +26,22 @@ export const LOCALES: LocalizationDictionary = {
     'phenomenon.moved_object': '物の位置が変わっている',
     'phenomenon.food_reduced': 'ごはんが減っている',
     'phenomenon.warm_hollow': 'クッションにくぼみが残っている',
+
+    // --- 描写解像度（EP-4.03 / docs/06:681）---
+    // 仮説を立てると、その仮説に関わる現象の観察文が「詳しい版」に替わる。
+    // ⚠️ 正誤の合図ではない（**外れた仮説でも詳しくなる**）。上がるのは見えた事実の**解像度**だけで、
+    //    解釈（「落ち着いている」「安心した」等）は決して足さない（B4 P-01）。
+    'phenomenon.sudden_noise.detailed': 'どこかで物音がした。小さな、乾いた音だった',
+    'phenomenon.at_refuge.detailed': '部屋のすみにいる。壁ぎわの、光の届かないあたり',
+    'phenomenon.at_vantage.detailed': '高いところにいる。ここからは、背中だけが見える',
+    'phenomenon.at_open_floor.detailed': '部屋のまんなかにいる。こちらからは、全身がよく見える',
+
+    // --- 仮説（EP-4.03 / docs/18 B-C）---
+    // ⚠️ すべて**推量形**。断定しない。正誤は示さない（採点しない・docs/06:616）。
+    //    これはプレイヤー自身の言葉であって、猫についての正解ではない。
+    'hypothesis.noise_sensitive': 'この子は、物音が苦手そう',
+    'hypothesis.likes_height': '高いところが、落ち着くのかもしれない',
+    'hypothesis.likes_cover': '隠れられる場所を、好むみたい',
+    'hypothesis.comes_close': 'そばに来てくれることも、あるみたい',
   },
 };

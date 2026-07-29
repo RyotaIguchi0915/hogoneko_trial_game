@@ -87,6 +87,14 @@ export interface GameSnapshot {
    *    任意（後方互換）: absent は [] で補完（B4 §9.6 追加フィールド・version bump 不要）。
    */
   readonly placements?: readonly string[];
+  /**
+   * プレイヤーが立てた仮説（Persisted・EP-4.03）。仮説テンプレID の集合（例 'hypothesis.likes_height'）。
+   * ⚠️ **観察履歴から導出できない**——プレイヤーの選択そのものだから保存が要る。
+   *    Player Knowledge が派生値として再生成されるのとは性質が違う（B4 §9.2）。
+   * ⚠️ 「正解」ではない。合っているかどうかは保存しないし、判定もしない（採点しない・docs/06:616）。
+   *    任意（後方互換）: absent は [] で補完（B4 §9.6 追加フィールド・version bump 不要）。
+   */
+  readonly hypotheses?: readonly string[];
 }
 
 export interface SaveMeta {
@@ -280,6 +288,10 @@ export function validateStructure(value: unknown): ValidationResult {
   // 設置環境（EP-4.04）も任意（後方互換）。存在するなら文字列配列。
   if (data.placements !== undefined && !Array.isArray(data.placements)) {
     push('data.placements is invalid');
+  }
+  // 立てた仮説（EP-4.03）も任意（後方互換）。存在するなら文字列配列。
+  if (data.hypotheses !== undefined && !Array.isArray(data.hypotheses)) {
+    push('data.hypotheses is invalid');
   }
 
   return { valid: errors.length === 0, errors };
