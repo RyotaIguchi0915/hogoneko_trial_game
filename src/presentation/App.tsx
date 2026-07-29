@@ -43,11 +43,12 @@ function restoreNote(status: RestoreStatus): string {
 }
 
 /**
- * 結末の語り（EP-3.08 決定＋絆で変わる結末・プレースホルダ）。
- * ⚠️ 本文・意味づけ・演出は**監修**。ここは「30日の絆（bondTier）と選択（decision）を映す器」。
- *    数値は使わず、runtime が渡す質的カテゴリ（distant/warming/bonded）で出し分ける（観測境界 I-1）。
+ * 結末の語り（EP-3.08 決定＋EP-4.06 理解を映す結末・プレースホルダ）。
+ * ⚠️ 本文・意味づけ・演出は**監修**。ここは「30日でどれだけこの子を分かって寄り添えたか（bondTier）と
+ *    選択（decision）を映す器」。数値は使わず質的カテゴリで出し分ける（観測境界 I-1）。
+ * ⚠️ 迎える／もう少し見守る／送り出す の3つは**等価**（優劣をつけない・I-9）。送り出しを失敗として描かない。
  */
-const DECIDE_PROMPT = '30日が、すぎました。\nこの子との、これから。';
+const DECIDE_PROMPT = '30日が、すぎました。\nあなたが見てきた、この子との——これから。';
 
 const OUTCOME: Record<
   Decision,
@@ -56,24 +57,38 @@ const OUTCOME: Record<
   adopt: {
     bonded: {
       ending:
-        'あなたは、この子を家族に迎えることにした。\nその手のなかで、猫はもう安心して目を閉じる。',
+        'あなたは、この子を家族に迎えることにした。\nもう、この手のなかで安心して目を閉じる。',
       epilogue: '——それからの日々。\nこの子は、ここが自分の場所だと知っている。',
     },
     warming: {
       ending:
-        'あなたは、この子を家族に迎えることにした。\nまだ少し遠慮がちだけれど、確かにそばにいてくれる。',
-      epilogue: '——それからの日々。\n距離は、ゆっくり縮まっていくのだろう。',
+        'あなたは、この子を家族に迎えることにした。\nまだ少し遠慮がちだけれど、そばにいてくれる。',
+      epilogue: '——それからの日々。\nこの子のペースで、距離は縮まっていく。',
     },
     distant: {
       ending:
-        'あなたは、この子を家族に迎えることにした。\nこの子が心をひらくのは、きっとこれからだ。',
-      epilogue: '——それからの日々。\n焦らず、待つことにする。',
+        'あなたは、この子を家族に迎えることにした。\n心をひらいてくれるのは、きっとこれからだ。',
+      epilogue: '——それからの日々。\nわからないことは、これから一つずつ。',
+    },
+  },
+  extend: {
+    bonded: {
+      ending: 'あなたは、もう少し一緒に過ごすことにした。\n通じ合えた手応えを、確かめるように。',
+      epilogue: '——観察はつづく。\nこの子のことが、少しずつ言葉になっていく。',
+    },
+    warming: {
+      ending: 'あなたは、もう少し一緒に過ごすことにした。\nまだ知らない面が、きっとある。',
+      epilogue: '——観察はつづく。\n急がず、この子を見ていく。',
+    },
+    distant: {
+      ending: 'あなたは、もう少し一緒に過ごすことにした。\nこの子のことを、まだ決めきれない。',
+      epilogue: '——観察はつづく。\nわかろうとすることを、やめない。',
     },
   },
   return: {
     bonded: {
       ending:
-        'あなたは、この子を送り出すことにした。\nこれだけ懐いてくれた子と離れるのは、やっぱり寂しい。',
+        'あなたは、この子を送り出すことにした。\nこれだけ通じ合えたからこそ、この子に合う場所を願う。',
       epilogue: '——その後。\nあの30日は、確かにあたたかかった。',
     },
     warming: {
@@ -83,15 +98,15 @@ const OUTCOME: Record<
     distant: {
       ending:
         'あなたは、この子を送り出すことにした。\nこの子には、もっと合う場所があるのかもしれない。',
-      epilogue: '——その後。\nいつか、ちょうどいい相手に出会えますように。',
+      epilogue: '——その後。\nよく見た。それは、この子のための判断だった。',
     },
   },
 };
 
 const REFLECTION: Record<BondTier, string> = {
-  bonded: 'この30日を、ふりかえる。\nよく見て、よく待った。',
-  warming: 'この30日を、ふりかえる。\n少しずつ、通じ合えた気がする。',
-  distant: 'この30日を、ふりかえる。\nまだ、わからないことも多い。',
+  bonded: 'この30日で、この子のことがずいぶん分かってきた。\nよく見て、よく待った。',
+  warming: 'この30日で、この子のことが少しずつ分かってきた。\nまだ知らない面も、きっとある。',
+  distant: 'この30日、この子はまだ多くを見せてくれなかった。\nわかろうとした時間は、無駄ではない。',
 };
 
 /** 結末アークの静かな画面（語り＋任意の操作ボタン）。構図固定・Pillar 6。 */
@@ -268,7 +283,7 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
     );
   }
 
-  // 去就の決定（deciding）: 30日の締めくくり。迎える／お別れするを選ぶ（構図固定・Pillar 6）。
+  // 去就の決定（deciding）: 30日の締めくくり。迎える／もう少し見守る／送り出す（3つは等価・I-9・Pillar 6）。
   if (view.gamePhase === 'deciding') {
     return (
       <ArcScreen
@@ -277,7 +292,8 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
         text={DECIDE_PROMPT}
         actions={[
           { label: '迎える', onClick: () => onDecide('adopt'), primary: true },
-          { label: 'お別れする', onClick: () => onDecide('return') },
+          { label: 'もう少し見守る', onClick: () => onDecide('extend') },
+          { label: '送り出す', onClick: () => onDecide('return') },
         ]}
       />
     );

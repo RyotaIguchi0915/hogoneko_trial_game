@@ -59,8 +59,11 @@ export type InterventionResult =
   | { readonly ok: true; readonly slotsLeft: number }
   | { readonly ok: false; readonly reason: 'away' | 'no-slots' };
 
-/** 去就の決定（EP-3.08）。迎える（adopt）／お別れする（return）。 */
-export type Decision = 'adopt' | 'return';
+/**
+ * 去就の決定（EP-3.08 / EP-4.06）。迎える（adopt）／もう少し見守る（extend）／送り出す（return）。
+ * ⚠️ 3つは**等価**（優劣をつけない・憲章 I-9）。「送り出す」を失敗として演出しない。
+ */
+export type Decision = 'adopt' | 'extend' | 'return';
 
 /** 部屋を整える設置（環境アクション・EP-4.04）。隠れ家／高い台。 */
 export type PlacementKind = 'hiding_place' | 'high_perch';
@@ -85,8 +88,11 @@ const PLACEMENTS: Readonly<Record<PlacementKind, { zoneId: string; attrs: ZoneAt
 };
 
 /**
- * 絆のティア（EP-3.08）。trust（真実・数値）から導く**質的カテゴリ**。
- * ⚠️ L4 には数値でなくこのカテゴリだけを渡す（観測境界 I-1）。結末の出し分けに使う。
+ * この子とどれだけ通じ合えたか（EP-3.08 / EP-4.06）。trust（真実・数値）から導く**質的カテゴリ**。
+ * ⚠️ 「懐き度」の数値メーターではない（憲章 I-1）。EP-4.04 以降 trust は「この子の性質を読み、環境と世話で
+ *    安心を満たせたか」を反映する（合う環境→落ち着く→trust）。ゆえに本ティアは**理解して寄り添えた度合い**を映す。
+ * ⚠️ L4 には数値でなくこのカテゴリだけを渡す（観測境界 I-1）。結末の語りの出し分けに使う。
+ *    distant=まだ遠い / warming=少しずつ通じてきた / bonded=心をひらいてくれた。
  */
 export type BondTier = 'distant' | 'warming' | 'bonded';
 

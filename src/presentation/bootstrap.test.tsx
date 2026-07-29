@@ -134,7 +134,7 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     expect(second.view.knowledgeNotes.length).toBeGreaterThan(0);
   });
 
-  it('30日を終えると決定（迎える/お別れ）→絆で変わる結末になる（EP-3.08）', () => {
+  it('30日を終えると決定（迎える/見守る/送り出す）→理解を映す結末になる（EP-3.08/4.06）', () => {
     const { runtime } = bootstrap({
       storage: createLocalStorageSaveStorage(),
       clock: fixedClock,
@@ -145,9 +145,10 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
       runtime.advanceSegment();
     }
     render(<App runtime={runtime} initialView={computeView(runtime, 'ok')} />);
-    // deciding: 二択 → 迎える → 結末の語り＋「つづける」→ epilogue → reflection（＋もう一度）。
+    // deciding: 3択（等価）→ 迎える → 結末の語り＋「つづける」→ epilogue → reflection（＋もう一度）。
     expect(screen.getByText('迎える')).toBeInTheDocument();
-    expect(screen.getByText('お別れする')).toBeInTheDocument();
+    expect(screen.getByText('もう少し見守る')).toBeInTheDocument();
+    expect(screen.getByText('送り出す')).toBeInTheDocument();
     fireEvent.click(screen.getByText('迎える'));
     expect(screen.getByLabelText('結末')).toBeInTheDocument();
     fireEvent.click(screen.getByText('つづける')); // ending → epilogue
@@ -164,7 +165,7 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
       runtime.advanceSegment();
     }
     render(<App runtime={runtime} initialView={computeView(runtime, 'ok')} />);
-    fireEvent.click(screen.getByText('お別れする'));
+    fireEvent.click(screen.getByText('送り出す'));
     fireEvent.click(screen.getByText('つづける')); // ending → epilogue
     fireEvent.click(screen.getByText('つづける')); // epilogue → reflection
     runtime.save(); // 到達時点のセーブがある状態にしておく
