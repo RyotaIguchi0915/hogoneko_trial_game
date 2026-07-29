@@ -1,5 +1,6 @@
 import type { Rng } from '@core/index';
 import type { CatState } from '@core/state/catState';
+import { type CatProfile, NEUTRAL_PROFILE } from '@core/state/catProfile';
 import {
   raiseNeedsPressure,
   updateVigilance,
@@ -13,7 +14,7 @@ import {
 } from './catDynamics';
 import { selectBehavior } from './catAI';
 import { selectZone, type ZoneChoice } from './zoneSelection';
-import { applyStimulusVigilance } from './stimulus';
+import { applyStimulusVigilance, stimulusSensitivity } from './stimulus';
 
 /**
  * Segment Update — 1 Segment の完全計算順序（L2 Simulation / B5 §8.1）
@@ -51,6 +52,8 @@ export interface SegmentContext {
   readonly stimulus?: boolean;
   /** 情動アークのペース補正（短縮デモで弧を縮尺に・EP-3.09）。省略時 1（本編）。Familiarity の育ちに掛かる。 */
   readonly paceScale?: number;
+  /** この子の個体プロファイル（EP-4.01）。省略時は中立（＝個体差なし・後方互換）。数値は L4 に出さない（I-1）。 */
+  readonly profile?: CatProfile;
   /** 行動選択の behavior ストリーム RNG（B5 §8.4）。省略時は argmax（EP-2.02）。 */
   readonly behaviorRng?: Rng;
 }
@@ -63,16 +66,24 @@ const NEUTRAL_ENV: CatEnvironmentInput = { zoneSecurity: 0.5, zoneComfort: 0.5 }
  */
 export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState {
   const env = ctx.environment ?? NEUTRAL_ENV;
+  const profile = ctx.profile ?? NEUTRAL_PROFILE; // 個体差（EP-4.01）。省略時は中立。
 
   // step4: 時間経過による Needs 圧の上昇（safety 以外）
   const needsAfterPressure = raiseNeedsPressure(state.needs);
 
-  // step5: 突発刺激（音・驚き）→ Vigilance を跳ね上げる（上昇側・EP-3.06）。以降の減衰/ストレスへ伝播。
-  const affectIn = ctx.stimulus ? applyStimulusVigilance(state.affect) : state.affect;
+  // step5: 突発刺激（音・驚き）→ Vigilance を跳ね上げる（上昇側・EP-3.06）。跳ね幅は個体の神経質さで変わる（EP-4.01）。
+  const affectIn = ctx.stimulus
+    ? applyStimulusVigilance(state.affect, stimulusSensitivity(profile))
+    : state.affect;
 
   // step6: Vigilance（下降＝baseline へ。上昇は step5 の刺激＋満たされない欲求の不安・EP-3.07）。
   //   空腹が高いほど落ち着けず baseline が上がる → 世話（空腹を鎮める）が間接的に安心＝信頼を支える。
-  const vigilance = updateVigilance(affectIn, needsDistress(needsAfterPressure));
+  //   神経質な子ほど baseline が高い（EP-4.01）。
+  const vigilance = updateVigilance(
+    affectIn,
+    needsDistress(needsAfterPressure),
+    profile.neuroticism,
+  );
 
   // step7: StressLoad（Vigilance の積分 − 減衰・上限0.8）
   const stressLoad = updateStressLoad(affectIn.stressLoad, vigilance);
@@ -84,7 +95,13 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
   const affect = { arousal, valence, vigilance, stressLoad };
 
   // step9: Relationship（在室で Familiarity 微増・Trust は日次）。paceScale で弧を縮尺（EP-3.09）。
-  const relationship = updateRelationship(state.relationship, ctx.inRoom, ctx.paceScale);
+  //   社会性が高い子ほど慣れが育ちやすい（EP-4.01）。
+  const relationship = updateRelationship(
+    state.relationship,
+    ctx.inRoom,
+    ctx.paceScale,
+    profile.sociability,
+  );
 
   // step11: N-01 安全欲求（Affect/Relationship/Zone に依存するため後段）
   const safety = updateSafety(affect, relationship, env.zoneSecurity);
@@ -96,7 +113,7 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
   // step16: 移動＝選んだ行動の遂行として次の現在地 Zone を決める（B5 §8.1 / B6 §2.7・B10 §5.2）。
   //   環境更新→安全→行動→移動 の順序を厳守（§8.2）。候補未供給時は現在地据え置き。
   const currentZone = ctx.zones
-    ? selectZone(ctx.zones, { behavior, prevZone: state.currentZone }, ctx.behaviorRng)
+    ? selectZone(ctx.zones, { behavior, prevZone: state.currentZone }, ctx.behaviorRng, profile)
     : state.currentZone;
 
   // step17: 行動による Need 充足（eating→hunger 低下）。選択した行動の結果を反映。

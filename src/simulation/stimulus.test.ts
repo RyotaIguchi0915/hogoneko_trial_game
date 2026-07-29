@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { rollStimulus, applyStimulusVigilance, STIMULUS_PROVISIONAL } from './stimulus';
+import {
+  rollStimulus,
+  applyStimulusVigilance,
+  stimulusSensitivity,
+  STIMULUS_PROVISIONAL,
+} from './stimulus';
 import { createRng } from '@core/index';
 import type { Affect } from '@core/state/catState';
+import { NEUTRAL_PROFILE } from '@core/state/catProfile';
 
 const aff = (vigilance: number): Affect => ({
   arousal: 0.3,
@@ -33,5 +39,21 @@ describe('Stimulus — 突発刺激（B5 §8.1 step5 / EP-3.06）', () => {
     const rate = hits / n;
     expect(rate).toBeGreaterThan(STIMULUS_PROVISIONAL.chance - 0.04);
     expect(rate).toBeLessThan(STIMULUS_PROVISIONAL.chance + 0.04);
+  });
+});
+
+describe('個体差: 神経質さで突発音の跳ね幅が変わる（EP-4.01）', () => {
+  it('神経質な子ほど感度が高く、動じない子ほど低い（中立=1.0）', () => {
+    const neurotic = stimulusSensitivity({ ...NEUTRAL_PROFILE, neuroticism: 0.9 });
+    const calm = stimulusSensitivity({ ...NEUTRAL_PROFILE, neuroticism: 0.1 });
+    expect(stimulusSensitivity(NEUTRAL_PROFILE)).toBeCloseTo(1.0);
+    expect(neurotic).toBeGreaterThan(calm);
+  });
+
+  it('感度が高いほど同じ刺激で警戒がより大きく跳ねる', () => {
+    const base = aff(0.2);
+    const neurotic = applyStimulusVigilance(base, 1.4).vigilance;
+    const calm = applyStimulusVigilance(base, 0.6).vigilance;
+    expect(neurotic).toBeGreaterThan(calm);
   });
 });

@@ -100,6 +100,38 @@ describe('GameRuntime — createTruthReader（EP-12 dev 支援・読取専用）
   });
 });
 
+describe('GameRuntime — 個体差 CatProfile（EP-4.01）', () => {
+  const profileOf = (seed: number) => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed });
+    const p = rt.createTruthReader().getCatProfile();
+    rt.dispose();
+    return p;
+  };
+
+  it('seed を変えると別の個体になる（毎回同じ猫ではない）', () => {
+    const seeds = [1, 2, 3, 7, 42, 100, 999, 12345];
+    const keys = new Set(seeds.map((s) => JSON.stringify(profileOf(s))));
+    expect(keys.size).toBeGreaterThan(3);
+  });
+
+  it('同一 seed は常に同一個体（決定論・profile は f(seed)）', () => {
+    expect(profileOf(42)).toEqual(profileOf(42));
+  });
+
+  it('セーブ往復（復元）でも同一個体（保存せず seed から再生成）', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 777 });
+    rt1.begin();
+    for (let i = 0; i < 6; i++) rt1.advanceSegment();
+    const before = rt1.createTruthReader().getCatProfile();
+    rt1.save();
+    rt1.dispose();
+    const rt2 = GameRuntime.create({ storage, clock, seed: 777 });
+    expect(rt2.createTruthReader().getCatProfile()).toEqual(before);
+    rt2.dispose();
+  });
+});
+
 describe('GameRuntime — Segment ループが Simulation を駆動する（EP-2.05）', () => {
   it('advanceSegment で猫の内部状態が推移する', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
@@ -497,7 +529,8 @@ describe('GameRuntime — cat-location（ゾーン移動・EP-3.02）', () => {
 
 describe('GameRuntime — 関係の発達（日次 Trust・EP-3.05）', () => {
   it('穏やかな数日で Trust が育つ（従来は不変 0.05 だった）', () => {
-    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 12345 });
+    // seed=1 は穏やか・社交的な個体（EP-4.01）。神経質で内向的な子は逆に育ちにくい＝個体差。
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 1 });
     rt.begin();
     const t0 = rt.createTruthReader().getCatState().relationship.trust;
     for (let i = 0; i < 6 * 8; i++) rt.advanceSegment(); // 8日分

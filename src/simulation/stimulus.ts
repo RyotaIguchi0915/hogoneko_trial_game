@@ -1,5 +1,6 @@
 import type { Rng } from '@core/index';
 import type { Affect } from '@core/state/catState';
+import type { CatProfile } from '@core/state/catProfile';
 import { clamp01 } from './catDynamics';
 
 /**
@@ -23,7 +24,21 @@ export function rollStimulus(rng: Rng): boolean {
   return rng.next() < STIMULUS_PROVISIONAL.chance;
 }
 
-/** 突発刺激で Vigilance を跳ね上げた Affect を返す（純粋・§8.1 step5）。以降の減衰/ストレスに伝播する。 */
-export function applyStimulusVigilance(affect: Affect): Affect {
-  return { ...affect, vigilance: clamp01(affect.vigilance + STIMULUS_PROVISIONAL.vigilanceSpike) };
+/**
+ * 個体の突発音への感度（0.5〜1.5・神経質さ由来・EP-4.01）。
+ * 神経質な子（neuroticism 高）は同じ物音でも警戒が大きく跳ね、動じない子は小さい。0.5=中立で 1.0。
+ */
+export function stimulusSensitivity(profile: CatProfile): number {
+  return 0.5 + profile.neuroticism;
+}
+
+/**
+ * 突発刺激で Vigilance を跳ね上げた Affect を返す（純粋・§8.1 step5）。以降の減衰/ストレスに伝播する。
+ * sensitivity は個体差（神経質さ）。省略時 1（中立・後方互換）。
+ */
+export function applyStimulusVigilance(affect: Affect, sensitivity = 1): Affect {
+  return {
+    ...affect,
+    vigilance: clamp01(affect.vigilance + STIMULUS_PROVISIONAL.vigilanceSpike * sensitivity),
+  };
 }

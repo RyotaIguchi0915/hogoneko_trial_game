@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { updateTrustDaily, needsDistress, updateVigilance, PROVISIONAL } from './catDynamics';
+import {
+  updateTrustDaily,
+  updateRelationship,
+  needsDistress,
+  updateVigilance,
+  PROVISIONAL,
+} from './catDynamics';
 import type { Affect, Relationship } from '@core/state/catState';
 
 const rel = (trust: number, familiarity: number): Relationship => ({ trust, familiarity });
@@ -56,5 +62,40 @@ describe('needsDistress / 欲求不快が警戒に効く（EP-3.07）', () => {
   it('欲求不快は Vigilance baseline を押し上げる（落ち着けない）', () => {
     const calm: Affect = { arousal: 0.3, valence: 0, vigilance: 0.15, stressLoad: 0 };
     expect(updateVigilance(calm, 0.4)).toBeGreaterThan(updateVigilance(calm, 0));
+  });
+});
+
+describe('個体差の効き（EP-4.01）', () => {
+  const calmAff: Affect = { arousal: 0.3, valence: 0, vigilance: 0.15, stressLoad: 0 };
+
+  it('神経質な子ほど Vigilance baseline が高い（中立 0.5 で従来どおり）', () => {
+    const neurotic = updateVigilance(calmAff, 0, 0.9);
+    const easygoing = updateVigilance(calmAff, 0, 0.1);
+    expect(neurotic).toBeGreaterThan(updateVigilance(calmAff, 0, 0.5));
+    expect(updateVigilance(calmAff, 0, 0.5)).toBeGreaterThan(easygoing);
+  });
+
+  it('社会性が高い子ほど穏やかな日の Trust の伸びが大きい', () => {
+    const r = rel(0.2, 0.6);
+    const social = updateTrustDaily(r, calmAff, 1, 0.9).trust;
+    const aloof = updateTrustDaily(r, calmAff, 1, 0.1).trust;
+    expect(social).toBeGreaterThan(aloof);
+  });
+
+  it('社会性が高い子ほど在室で Familiarity が育ちやすい', () => {
+    const r = rel(0.2, 0.3);
+    const social = updateRelationship(r, true, 1, 0.9).familiarity;
+    const aloof = updateRelationship(r, true, 1, 0.1).familiarity;
+    expect(social).toBeGreaterThan(aloof);
+  });
+
+  it('ストレスによる Trust 低下は個体差に依らない（誰でも崩れる・非対称）', () => {
+    const stressed: Affect = { arousal: 0.5, valence: -0.3, vigilance: 0.6, stressLoad: 0.5 };
+    const r = rel(0.4, 0.5);
+    const social = updateTrustDaily(r, stressed, 1, 0.9).trust;
+    const aloof = updateTrustDaily(r, stressed, 1, 0.1).trust;
+    // 低下局面では social の方が rise 分だけわずかに上だが、両者とも t0 から下がる。
+    expect(social).toBeLessThan(r.trust);
+    expect(aloof).toBeLessThan(r.trust);
   });
 });

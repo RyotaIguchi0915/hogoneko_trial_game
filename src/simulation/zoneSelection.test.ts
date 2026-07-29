@@ -46,3 +46,27 @@ describe('Zone Selection（L2 / B6・B10 / EP-3.02）', () => {
     expect(safe).toBeGreaterThan(unsafe);
   });
 });
+
+describe('個体差: 場所選好が Zone utility を押し引きする（EP-4.01）', () => {
+  const input = { behavior: 'resting' as const, prevZone: 'x' };
+  const coverLover = { neuroticism: 0.5, coverSeeking: 0.9, heightSeeking: 0.5, sociability: 0.5 };
+  const openLover = { neuroticism: 0.5, coverSeeking: 0.1, heightSeeking: 0.5, sociability: 0.5 };
+  const heightLover = { neuroticism: 0.5, coverSeeking: 0.5, heightSeeking: 0.9, sociability: 0.5 };
+  const floorLover = { neuroticism: 0.5, coverSeeking: 0.5, heightSeeking: 0.1, sociability: 0.5 };
+
+  it('遮蔽好きの子ほど refuge の utility が高い', () => {
+    expect(zoneUtility(REFUGE, input, coverLover)).toBeGreaterThan(
+      zoneUtility(REFUGE, input, openLover),
+    );
+  });
+
+  it('高所好きの子ほど vantage の utility が高い', () => {
+    expect(zoneUtility(VANTAGE, input, heightLover)).toBeGreaterThan(
+      zoneUtility(VANTAGE, input, floorLover),
+    );
+  });
+
+  it('選好は refuge/vantage 以外の型には効かない（open は個体で変わらない）', () => {
+    expect(zoneUtility(OPEN, input, coverLover)).toBeCloseTo(zoneUtility(OPEN, input, openLover));
+  });
+});
