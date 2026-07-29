@@ -927,7 +927,7 @@ Data Architecture Bible が担うべき内容と、現在の所在：
 | OI-3 | 技術スタック（フレームワーク・言語）・性能数値目標 | Technical Design（未着手） |
 | OI-4 | UI/UX 設計（画面・操作・情報提示） | UI Design（未着手） |
 | OI-5 | Reality Bridge の具体内容（現実情報層） | Reality Bridge Design（未着手） |
-| OI-6 | アート方針・アセット仕様 | Art Bible（未着手） |
+| OI-6 | アート方針・アセット仕様 | Art Bible → **`docs/16` 起稿済み（Draft・2026-07-29）**。絵柄の基準画1体の確定が監修待ち |
 | OI-7 | サウンド方針（生活音・限定的音楽） | Sound Bible（未着手） |
 
 ## 15.3 🟡 要判断（デザイン判断待ち）
