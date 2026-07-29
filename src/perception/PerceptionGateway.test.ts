@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { initialCatState, type CatState } from '@core/state/catState';
-import { toPhenomena, tracesToPhenomena, GATEWAY_DESCRIPTORS } from './PerceptionGateway';
+import {
+  toPhenomena,
+  tracesToPhenomena,
+  soundToPhenomena,
+  GATEWAY_DESCRIPTORS,
+} from './PerceptionGateway';
 import type { Trace } from '@core/state/trace';
 import type { Phenomenon } from './Phenomenon';
 
@@ -90,5 +95,20 @@ describe('PerceptionGateway — 痕跡→現象（EP-2.06）', () => {
 
   it('痕跡なしなら空（発見するものが無い）', () => {
     expect(tracesToPhenomena([])).toEqual([]);
+  });
+});
+
+describe('PerceptionGateway — 環境音→現象（文脈つき観察・EP-4.02）', () => {
+  it('聞こえたら subject:sound の「物音がした」を返す（既知語彙・数値なし）', () => {
+    const out = soundToPhenomena(true);
+    expect(out).toEqual([
+      { subject: 'sound', descriptor: 'phenomenon.sudden_noise', observability: true },
+    ]);
+    expect(GATEWAY_DESCRIPTORS).toContain(out[0]!.descriptor);
+    for (const v of Object.values(out[0]!)) expect(typeof v).not.toBe('number');
+  });
+
+  it('聞こえなければ空（在室でも音が起きていない Segment）', () => {
+    expect(soundToPhenomena(false)).toEqual([]);
   });
 });

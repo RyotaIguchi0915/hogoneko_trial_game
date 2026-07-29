@@ -5,6 +5,7 @@ export type { Phenomenon, PhenomenonSubject } from './Phenomenon';
 export {
   toPhenomena,
   tracesToPhenomena,
+  soundToPhenomena,
   GATEWAY_DESCRIPTORS,
   type ObservationConditions,
 } from './PerceptionGateway';

@@ -16,6 +16,8 @@ export const LOCALES: LocalizationDictionary = {
     'phenomenon.roaming': '部屋を歩き回っている',
     'phenomenon.at_food': '食器のところにいる',
     'phenomenon.self_grooming': '毛づくろいをしている',
+    // 環境音（突発刺激・EP-4.02）— 聞こえた事実だけを言う（解釈しない）
+    'phenomenon.sudden_noise': 'どこかで物音がした',
     'phenomenon.shed_fur': '毛が落ちている',
     'phenomenon.moved_object': '物の位置が変わっている',
     'phenomenon.food_reduced': 'ごはんが減っている',

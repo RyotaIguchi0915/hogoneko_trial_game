@@ -42,7 +42,12 @@ import {
   type EnvironmentSystem,
 } from '@simulation/index';
 import type { EventDef } from '@data/schemas/event';
-import { toPhenomena, tracesToPhenomena, type Phenomenon } from '@perception/index';
+import {
+  toPhenomena,
+  tracesToPhenomena,
+  soundToPhenomena,
+  type Phenomenon,
+} from '@perception/index';
 import { buildDefaultEnvironment } from './environment';
 import { buildEventContent } from './events';
 
@@ -133,6 +138,8 @@ export class GameRuntime {
   #pendingTraces: readonly Trace[];
   /** 現 Segment の観測スナップショット（transient・描画用。pending クリアに影響されない）。 */
   #lastObservation: readonly Phenomenon[];
+  /** 直近 Segment に突発音が起きたか（transient・EP-4.02）。在室なら観察に「物音がした」を出す。 */
+  #lastStimulus = false;
   /** 検証済みイベント定義（不変・content 由来）。 */
   readonly #events: readonly EventDef[];
   /** 発火済みイベントID（Persisted・一度だけ発火・EP-2.09）。 */
@@ -312,8 +319,11 @@ export class GameRuntime {
   #observeCurrent(): readonly Phenomenon[] {
     const inRoom = isInRoomSegment(this.#time.now().segment);
     const catPhenomena = toPhenomena(this.#catAccess.getCatState(), { inRoom, observing: true });
+    // 在室なら、この Segment に起きた突発音を観察に出す（EP-4.02・文脈つき観察）。
+    const soundPhenomena = soundToPhenomena(inRoom && this.#lastStimulus);
     const tracePhenomena = inRoom ? tracesToPhenomena(this.#pendingTraces) : [];
-    return [...catPhenomena, ...tracePhenomena];
+    // 音（引き金）を先頭に置き、その後に猫の様子（反応）を並べる＝因果が読める順（EP-4.02）。
+    return [...soundPhenomena, ...catPhenomena, ...tracePhenomena];
   }
 
   /**
@@ -348,14 +358,16 @@ export class GameRuntime {
       // 推移の前に、その Day に達したイベントを発火して環境を変える（世界の変化・§2.3）。
       // 猫はこの変わった環境に対して自律的に反応する（下の updateSegment で Cat AI が決める）。
       this.#fireDueEvents(state.day);
+      // 突発刺激（環境音）を用途別 stream で決定論的に判定（EP-3.06）。観察にも出す（EP-4.02）。
+      const stimulus = rollStimulus(this.#rng.fork('stimulus', state.day, state.segment));
+      this.#lastStimulus = stimulus;
       this.#sim.updateSegment({
         day: state.day,
         segment: state.segment,
         inRoom: isInRoomSegment(state.segment),
         environment: this.#currentEnvironment(),
         zones: this.#zoneChoices(), // 現在地 Zone の env で状態更新し、全 Zone から次の居場所を選ぶ（EP-3.02）
-        // 突発刺激（環境音）を用途別 stream で決定論的に判定（EP-3.06・中盤の起伏）。
-        stimulus: rollStimulus(this.#rng.fork('stimulus', state.day, state.segment)),
+        stimulus,
         paceScale: this.#paceScale, // 短縮デモで Familiarity の育ちも縮尺に（EP-3.09）
         profile: this.#profile, // この子の素性で行動・場所・情動の効き方を個体化（EP-4.01・L4 には出さない I-1）
 
