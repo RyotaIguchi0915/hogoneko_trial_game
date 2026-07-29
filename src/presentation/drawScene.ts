@@ -75,6 +75,8 @@ const DEFAULT_POSITION: RelPoint = { x: 0.42, y: 0.5 };
 const PLACEMENT_RECTS: Readonly<Record<string, RelRect>> = {
   high_perch: { x: 0.38, y: 0.2, w: 0.2, h: 0.3 }, // 高い台（zone.vantage）
   hiding_place: { x: 0.72, y: 0.52, w: 0.22, h: 0.26 }, // 隠れ家（zone.refuge）
+  // ごはんを静かな隅へ（zone.open_floor の端）。移した先に食器が現れる（EP-4.04b）。
+  quiet_food: { x: 0.16, y: 0.62, w: 0.1, h: 0.06 },
 };
 
 /** 据え置きのクッション（zone.open_floor・content 定義で最初から在る）。 */

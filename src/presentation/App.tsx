@@ -444,6 +444,7 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
               [
                 ['hiding_place', '隠れ家を置く', '隠れ家を置いた'],
                 ['high_perch', '高い台を置く', '高い台を置いた'],
+                ['quiet_food', 'ごはんを静かな隅へ', 'ごはんを静かな隅へ移した'],
               ] as const
             ).map(([kind, label, done]) => {
               const placed = view.placements.includes(kind);
