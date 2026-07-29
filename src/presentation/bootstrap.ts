@@ -60,7 +60,9 @@ export function computeView(
   const catPlace = phenomena.find((p) => p.subject === 'place')?.descriptor ?? null;
   const progress = runtime.reader.getProgress();
   // Player Knowledge を観察履歴から再生成（保存しない・G-2）。回数は「観測回数」で Cat State ではない（I-1）。
-  const knowledge = derivePlayerKnowledge(observationLog);
+  // 観察ノートは「この子について見たこと」を並べる場所。
+  // 時間帯は毎 Segment 必ず出る文脈なので、集計に混ぜると本題が埋もれる（履歴には残す・EP-4.02d）。
+  const knowledge = derivePlayerKnowledge(observationLog.filter((e) => e.subject !== 'time'));
   const knowledgeNotes = knowledge.observed.map(
     (o) => `${localization.resolve(o.descriptor)}${o.count > 1 ? ` ×${o.count}` : ''}`,
   );

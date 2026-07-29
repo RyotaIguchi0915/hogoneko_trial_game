@@ -50,6 +50,30 @@ const ZONE_TO_DESCRIPTOR: Readonly<Record<string, string>> = {
   'zone.open_floor': 'phenomenon.at_open_floor',
 };
 
+/**
+ * Segment → 時間帯の観測 descriptor（EP-4.02d・文脈つき観察の「時間帯」・docs/18 B-B）。
+ * ⚠️ index は docs/13 の Segment 表（SG-1〜SG-6）に対応する。在室は SG-2/4/5＝index 1/3/4。
+ * ⚠️ 未定義の index では時間帯を語らない（未定義語彙を動的生成しない・B4 P-02）。
+ */
+const SEGMENT_TO_DESCRIPTOR: Readonly<Record<number, string>> = {
+  0: 'phenomenon.time_dawn', // SG-1 未明 04:00–06:00
+  1: 'phenomenon.time_morning', // SG-2 朝 06:00–10:00
+  2: 'phenomenon.time_noon', // SG-3 昼 10:00–15:00
+  3: 'phenomenon.time_evening', // SG-4 夕 15:00–19:00
+  4: 'phenomenon.time_night', // SG-5 夜 19:00–23:00
+  5: 'phenomenon.time_midnight', // SG-6 深夜 23:00–04:00
+};
+
+/**
+ * 時間帯 → 現象（EP-4.02d）。観察の**先頭**に置かれ、その場面がいつのことかを示す。
+ * ⚠️ 「見えた事実」であって解釈ではない（「静かな時間」「さみしい夜」等とは書かない・B4 P-01）。
+ * ⚠️ 猫の状態とは無関係に、常に観測できる（プレイヤー自身の時間だから）。
+ */
+export function timeToPhenomena(segment: number): readonly Phenomenon[] {
+  const descriptor = SEGMENT_TO_DESCRIPTOR[segment];
+  return descriptor !== undefined ? [{ subject: 'time', descriptor, observability: true }] : [];
+}
+
 /** 産出しうる全痕跡種別（GATEWAY_DESCRIPTORS の網羅・語彙定義の検証用）。 */
 const TRACE_KINDS: readonly Trace['kind'][] = [
   'shed_fur',
@@ -66,6 +90,7 @@ export const GATEWAY_DESCRIPTORS: readonly string[] = Array.from(
     ...TRACE_KINDS.map(traceDescriptor),
     SOUND_DESCRIPTOR,
     ...Object.values(ZONE_TO_DESCRIPTOR),
+    ...Object.values(SEGMENT_TO_DESCRIPTOR),
   ]),
 );
 

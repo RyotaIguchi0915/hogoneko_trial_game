@@ -46,6 +46,7 @@ import {
   toPhenomena,
   tracesToPhenomena,
   soundToPhenomena,
+  timeToPhenomena,
   derivePlayerKnowledge,
   availableHypotheses,
   isKnownHypothesis,
@@ -385,13 +386,15 @@ export class GameRuntime {
    * ⚠️ 不在中は「自分がいない」ので痕跡は見えない。痕跡は在室で戻った時に**発見**される（B2 §3.2）。
    */
   #observeCurrent(): readonly Phenomenon[] {
-    const inRoom = isInRoomSegment(this.#time.now().segment);
+    const segment = this.#time.now().segment;
+    const inRoom = isInRoomSegment(segment);
     const catPhenomena = toPhenomena(this.#catAccess.getCatState(), { inRoom, observing: true });
     // 在室なら、この Segment に起きた突発音を観察に出す（EP-4.02・文脈つき観察）。
     const soundPhenomena = soundToPhenomena(inRoom && this.#lastStimulus);
     const tracePhenomena = inRoom ? tracesToPhenomena(this.#pendingTraces) : [];
-    // 音（引き金）を先頭に置き、その後に猫の様子（反応）を並べる＝因果が読める順（EP-4.02）。
-    return [...soundPhenomena, ...catPhenomena, ...tracePhenomena];
+    // 〈時間帯〉→〈引き金〉→〈場所・行動〉→〈痕跡〉の順（docs/18 B-B の「読みの形」）。
+    // 時間帯が先にあることで「朝はこう、夜はこう」という並びの違いが見えるようになる。
+    return [...timeToPhenomena(segment), ...soundPhenomena, ...catPhenomena, ...tracePhenomena];
   }
 
   /**

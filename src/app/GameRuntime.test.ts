@@ -298,14 +298,15 @@ describe('GameRuntime — 観察履歴の蓄積・復元（EP-2.07 / B4 §9.2 / 
     rt.dispose();
   });
 
-  it('advanceSegment ごとに観測が1件だけ追記される（day/segment を伴う）', () => {
+  it('advanceSegment ごとに観測が追記される（Segment を跨いで重複しない・day/segment を伴う）', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
     rt.advanceSegment(); // Seg1 を観測
     rt.advanceSegment(); // Seg2 を観測
     const log = rt.reader.getObservationLog();
-    expect(log).toHaveLength(2);
-    expect(log[0]).toMatchObject({ day: 1, segment: 1 });
-    expect(log[1]).toMatchObject({ day: 1, segment: 2 });
+    // ⚠️ 1 Segment に複数の現象が並ぶ（時間帯・場所・行動…EP-4.02b/d）ので件数は固定しない。
+    //    検証するのは「どの Segment を観測したか」が過不足なく1回ずつ記録されていること。
+    expect([...new Set(log.map((e) => `${e.day}/${e.segment}`))]).toEqual(['1/1', '1/2']);
+    for (const e of log) expect(e).toMatchObject({ day: 1 });
     rt.dispose();
   });
 
@@ -342,7 +343,10 @@ describe('GameRuntime — 痕跡の発見（EP-2.06 / B2 §3.2）', () => {
     const rt = GameRuntime.create({ storage, clock, seed: 1 });
     expect(rt.reader.getProgress().segment).toBe(2);
     expect(traceSubjects(rt)).toEqual([]); // 不在なので痕跡は出さない（out_of_sight のみ）
-    expect(rt.reader.getObservation()[0]?.descriptor).toBe('phenomenon.out_of_sight');
+    // ⚠️ 先頭は時間帯の文脈（EP-4.02d）になったので、猫の様子は subject で探す。
+    expect(rt.reader.getObservation().find((p) => p.subject === 'cat')?.descriptor).toBe(
+      'phenomenon.out_of_sight',
+    );
     rt.dispose();
   });
 

@@ -8,8 +8,11 @@
  * ⚠️ この型に数値フィールドを加えると、下の型レベルガードでコンパイルが落ちる（EP-10 の観測境界）。
  */
 
-/** 現象の対象（B4 P-01）。place = 猫が今どこにいるか（見えた事実・EP-4.02b）。 */
-export type PhenomenonSubject = 'cat' | 'trace' | 'furniture' | 'sound' | 'place';
+/**
+ * 現象の対象（B4 P-01）。
+ * place = 猫が今どこにいるか（EP-4.02b）／ time = その場面がいつのことか（EP-4.02d）。
+ */
+export type PhenomenonSubject = 'cat' | 'trace' | 'furniture' | 'sound' | 'place' | 'time';
 
 export interface Phenomenon {
   readonly subject: PhenomenonSubject;

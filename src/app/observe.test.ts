@@ -50,8 +50,23 @@ describe('GameRuntime.observe（EP-2.04 観測境界の越境点）', () => {
 
   it('不在 Segment では out_of_sight（Seg0=未明は不在）', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
-    // 起動直後は Day1 Seg0（未明・不在）
-    expect(rt.observe()[0]?.descriptor).toBe('phenomenon.out_of_sight');
+    // 起動直後は Day1 Seg0（未明・不在）。
+    // ⚠️ 先頭は時間帯の文脈（EP-4.02d）になったので、猫の様子は subject で探す。
+    const out = rt.observe();
+    expect(out.find((p) => p.subject === 'cat')?.descriptor).toBe('phenomenon.out_of_sight');
+    expect(out[0]?.descriptor).toBe('phenomenon.time_dawn');
+    rt.dispose();
+  });
+
+  it('観察は〈時間帯〉を先頭に並ぶ（文脈から読める・EP-4.02d / docs/18 B-B）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.begin();
+    rt.advanceSegment(); // Seg1 = SG-2 朝・在室
+    const out = rt.reader.getObservation();
+    expect(out[0]?.subject).toBe('time');
+    expect(out[0]?.descriptor).toBe('phenomenon.time_morning');
+    // 時間帯のあとに、その場面の中身（場所・行動）が続く。
+    expect(out.map((p) => p.subject)).toContain('cat');
     rt.dispose();
   });
 

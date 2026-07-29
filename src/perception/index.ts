@@ -6,6 +6,7 @@ export {
   toPhenomena,
   tracesToPhenomena,
   soundToPhenomena,
+  timeToPhenomena,
   GATEWAY_DESCRIPTORS,
   type ObservationConditions,
 } from './PerceptionGateway';

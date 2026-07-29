@@ -4,8 +4,10 @@ import {
   toPhenomena,
   tracesToPhenomena,
   soundToPhenomena,
+  timeToPhenomena,
   GATEWAY_DESCRIPTORS,
 } from './PerceptionGateway';
+import { isInRoomSegment } from '@core/index';
 import type { Trace } from '@core/state/trace';
 
 function catWith(behavior: CatState['behavior']): CatState {
@@ -157,5 +159,36 @@ describe('PerceptionGateway — 環境音→現象（文脈つき観察・EP-4.0
 
   it('聞こえなければ空（在室でも音が起きていない Segment）', () => {
     expect(soundToPhenomena(false)).toEqual([]);
+  });
+});
+
+describe('PerceptionGateway — 時間帯→現象（文脈つき観察・EP-4.02d / docs/13 Segment 表）', () => {
+  it('Segment ごとに対応する時間帯 descriptor を返す（既知語彙・数値なし）', () => {
+    const map: Array<[number, string]> = [
+      [0, 'phenomenon.time_dawn'],
+      [1, 'phenomenon.time_morning'],
+      [2, 'phenomenon.time_noon'],
+      [3, 'phenomenon.time_evening'],
+      [4, 'phenomenon.time_night'],
+      [5, 'phenomenon.time_midnight'],
+    ];
+    for (const [segment, descriptor] of map) {
+      const out = timeToPhenomena(segment);
+      expect(out).toEqual([{ subject: 'time', descriptor, observability: true }]);
+      expect(GATEWAY_DESCRIPTORS).toContain(descriptor);
+      for (const v of Object.values(out[0]!)) expect(typeof v).not.toBe('number');
+    }
+  });
+
+  it('在室の3 Segment は朝・夕・夜（docs/13 の SG-2/4/5 と一致）', () => {
+    expect(timeToPhenomena(1)[0]?.descriptor).toBe('phenomenon.time_morning');
+    expect(timeToPhenomena(3)[0]?.descriptor).toBe('phenomenon.time_evening');
+    expect(timeToPhenomena(4)[0]?.descriptor).toBe('phenomenon.time_night');
+    for (const s of [1, 3, 4]) expect(isInRoomSegment(s)).toBe(true);
+  });
+
+  it('未定義の Segment では時間帯を語らない（未定義語彙を動的生成しない・B4 P-02）', () => {
+    expect(timeToPhenomena(6)).toEqual([]);
+    expect(timeToPhenomena(-1)).toEqual([]);
   });
 });
