@@ -237,11 +237,11 @@ left. The whole body is visible and centered. The mood is quiet and gentle.
 
 背景は自由に描けない。[src/content/environment.ts](src/content/environment.ts) が定義する **3つの Zone の属性が、そのまま構図の制約**になる。
 
-| Zone | 家具 | lightLevel | humanDistance | noise/traffic | → **絵での位置** |
+| Zone | 家具（EP-4.04 以降） | lightLevel | humanDistance | noise/traffic | → **絵での位置** |
 |---|---|---|---|---|---|
-| `zone.vantage` | キャットタワー | **0.8（最も明るい）** | 0.5（中） | 低 | **窓の右隣・高い位置**（光が当たる高所） |
-| `zone.open_floor` | クッション | 0.7 | **0.2（人に最も近い）** | **高** | **手前中央の床**（カメラ＝人に近い動線） |
-| `zone.refuge` | 隠れ箱 | **0.3（最も暗い）** | **0.6（最も遠い）** | 最低 | **右奥の隅**（窓から遠い陰） |
+| `zone.vantage` | **素**。プレイヤーが「高い台を置く」で装備 | **0.8（最も明るい）** | 0.5（中） | 低 | **窓の右隣・高い位置**（光が当たる高所） |
+| `zone.open_floor` | クッション（据え置き） | 0.7 | **0.2（人に最も近い）** | **高** | **手前中央の床**（カメラ＝人に近い動線） |
+| `zone.refuge` | **素**。プレイヤーが「隠れ家を置く」で装備 | **0.3（最も暗い）** | **0.6（最も遠い）** | 最低 | **右奥の隅**（窓から遠い陰） |
 
 > 光・距離・静けさが**データと絵で食い違うと、プレイヤーの推論が壊れる**。
 > 「暗くて静かな隅にいる」という観察が、絵では明るい窓辺だった——これは `docs/18` B-B（文脈つき観察）を無効化する。
@@ -270,18 +270,23 @@ soft hand-drawn children's picture-book illustration of a small quiet Japanese
 room, seen from a fixed straight-on front view at eye level.
 Light pine wooden floor with soft warm tones. A window on the upper left of the
 back wall, soft natural daylight coming through it and pooling on the floor below.
-A simple pine wood cat tower stands to the right of the window, its top platform
-catching the light. In the far right corner, away from the window, sits a plain
-cardboard hiding box on its side, its opening facing the viewer, in gentle shadow.
 A round cream cotton cushion rests on the floor in the near center. A small
 ceramic food bowl sits on the floor to the near right.
+The rest of the room is bare: an empty patch of floor to the right of the window,
+and an empty corner in the far right — both waiting to be furnished.
 The center of the floor is open and empty. The room is empty, with no cat and no
 people. Warm cream palette, flat colors, even dark-brown outlines, one soft warm
 shadow per object, calm and quiet, tidy and cared for.
 --ar 4:3 --style raw --stylize 100
---no cat, animal, person, text, watermark, clutter, mess, dark shadows, black
-outline, cold blue tones, neon, photorealism, 3D render, gradient, gloss, vignette
+--no cat, animal, person, cat tower, cardboard box, shelf, furniture, text, watermark,
+clutter, mess, dark shadows, black outline, cold blue tones, neon, photorealism,
+3D render, gradient, gloss, vignette
 ```
+
+⚠️ **家具を背景に焼き込まない**（EP-4.04 以降）。キャットタワーと隠れ家は**プレイヤーが置くもの**で、
+`placements` として猫の下のレイヤに描かれる（`drawScene.ts` の `PLACEMENT_RECTS`）。
+背景に最初から描いてあると、**「置いた」ことが絵に出なくなり、働きかけの手応えが消える**。
+背景に含めてよい家具は、content 側で据え置きのクッションと食器だけ。
 
 ### 6.4 `room-night`（夜）
 

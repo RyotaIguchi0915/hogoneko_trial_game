@@ -456,6 +456,7 @@ Appearance { body, coat, pattern, white, ears, eyes, tail }
 | `self_grooming` | 毛づくろいをしている | 後脚を上げる／前脚を舐める | 体を折る。口の ω を許可 | ⚠️ 未作成 |
 | `out_of_sight` | 姿が見当たらない | **描かない** | 空の部屋 + 痕跡が1つ（§6.4） | `null` ✅ |
 | `sudden_noise`<br>（channel: sound） | どこかで物音がした | **描かない** | 音源は画面外。**観察文の先頭**に出るので、絵は続く猫の姿勢だけで反応を語る（**EP-4.02 実装済**・`807a62c`） | — |
+| `at_refuge` / `at_vantage` / `at_open_floor`<br>（subject: place） | 部屋のすみ／高いところ／部屋のまんなかにいる | **ポーズではなく位置** | 行動の**前**に置かれ文脈を作る。絵は同じ descriptor から `PLACE_POSITIONS`（`drawScene.ts`）で位置を決めるので、**文と絵が必ず同じ場所を指す**（**EP-4.02b 実装済**） | — |
 
 ⚠️ **現状 `sprites.ts` は3ポーズのみ**で、`ears_orienting` / `at_food` / `self_grooming` は汎用の座り姿勢にフォールバックしている（[sprites.ts:60](src/presentation/sprites.ts#L60)）。
 **これは推論の材料が3分の1に潰れているということ**——`docs/18` B-B（文脈つき観察）以前の、より基礎的な欠落。**最優先で埋める**。
@@ -720,16 +721,19 @@ sad expression, cage, chain, tears, clutter
 |---|---|---|---|
 | A-1 | `sprites.ts` / `drawScene.ts` | 「抑制された写実」の旧方針コメントを本書参照に更新（§1.6） | 高 |
 | A-2 | `sprites.ts` | **不足3ポーズ**（`ears_orienting` / `at_food` / `self_grooming`）を追加（§4.4） | **最高** |
-| A-3 | `drawScene.ts` | 猫の描画位置を Zone 座標に従わせる（現状暫定中央・§5.3、座標は `docs/16a` §6.2）。**B-B「場所」の実装と同時に行う**（文と絵の表裏） | **最高** |
+| ~~A-3~~ | `drawScene.ts` | ~~猫の描画位置を Zone 座標に従わせる~~ → **完了（EP-4.02b）**。`PLACE_POSITIONS` が観測 descriptor から位置を決め、`placements` の家具も描く。B-B「場所」と同時に実装し、文と絵が同じ Phenomenon を情報源にする形にした | ✅ |
 | A-4 | `theme.ts` | 木・光トークンを追加（§2.1.2 / §2.1.3） | 中 |
 | A-5 | `sprites.ts` + `src/app` | Appearance（7レイヤ）合成関数・`fork('appearance')` 配線（§4.3）。**EP-4.01 の `generateCatProfile` と同じ形で書ける**（実装済・`01d801d`） | 中 |
 | A-6 | `assets/` | 生成素材の導入と Vite asset import（§7.2） | 中 |
 | A-7 | `docs/17` | 本書への相互参照を追加 | 低 |
 
-⚠️ **A-2 / A-3 は次のエポックの前提**。EP-4.02（`807a62c`）で音は観察に出るようになったが、
-なお**猫の語彙6つのうち3つが同じ絵にフォールバック**し（`sprites.ts:60`）、**位置は常に中央**（`drawScene.ts:87`）。
-**「観察して推し量る」ための視覚的材料が、まだ半分以上失われている。**
-とくに A-3 は B-B の残り「場所」と不可分——**文が場所を語り始める前に、絵が場所を語れるようにしておく。**
+⚠️ **A-3 は完了（EP-4.02b）。残るは A-2。**
+音（EP-4.02）と場所（EP-4.02b）で観察の文脈が揃い、絵も**観察文と同じ Phenomenon から**場所を語るようになった。
+置いたもの（EP-4.04 の `placements`）も絵に出るので、働きかけに手応えが生まれている。
+
+一方で、**猫の語彙6つのうち3つ（`ears_orienting` / `at_food` / `self_grooming`）は、まだ同じ座り姿勢にフォールバックしている**（`sprites.ts:60`）。
+場所が読めるようになったぶん、**姿勢の作り分けが次の最大の欠落**になった——「高いところで"じっとしている"」と
+「高いところで"毛づくろいしている"」が同じ絵では、せっかくの文脈が活きない。
 
 ---
 

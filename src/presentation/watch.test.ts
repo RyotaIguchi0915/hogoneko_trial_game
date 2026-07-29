@@ -15,6 +15,7 @@ function view(over: Partial<AppView>): AppView {
     bondTier: 'warming',
     observations: [],
     catSprite: null,
+    catPlace: null,
     actionSlots: 0,
     placements: [],
     knowledgeNotes: [],

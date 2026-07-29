@@ -18,6 +18,12 @@ export interface AppView {
   readonly observations: readonly string[];
   /** 猫の姿勢スプライト（観測 descriptor 由来）。隠れ/不在なら null。数値ではない（憲章 I-1）。 */
   readonly catSprite: SpriteKey | null;
+  /**
+   * 猫が今いる場所（観測 descriptor 由来・EP-4.02b）。隠れ/不在なら null。
+   * ⚠️ Zone ID（真実）ではなく**観測された場所の語彙**。L4 はこれを見て猫を部屋のどこに描くか決める。
+   *    観察文と絵が同じ Phenomenon を情報源にするので、「文は高いところ・絵は中央」の食い違いが起きない。
+   */
+  readonly catPlace: string | null;
   /** アプリ全体フェーズ（物語アーク・EP-3.01）。title/playing/deciding/ending/epilogue/reflection で描き分ける。 */
   readonly gamePhase: GamePhase;
   /** 去就の決定（未決定は null・EP-3.08）。結末画面の出し分けに使う。 */

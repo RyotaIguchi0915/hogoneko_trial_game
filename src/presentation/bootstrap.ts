@@ -44,6 +44,8 @@ export function computeView(
   // スプライトは猫の様子（subject:'cat'）から。音・痕跡は文字（観察）で示し、猫の姿勢は変えない（EP-4.02）。
   const catPhenomenon = phenomena.find((p) => p.subject === 'cat');
   const catSprite = spriteForDescriptor(catPhenomenon?.descriptor);
+  // 猫の居場所（EP-4.02b）。観察文とまったく同じ Phenomenon から取るので、文と絵が食い違わない。
+  const catPlace = phenomena.find((p) => p.subject === 'place')?.descriptor ?? null;
   const progress = runtime.reader.getProgress();
   // Player Knowledge を観察履歴から再生成（保存しない・G-2）。回数は「観測回数」で Cat State ではない（I-1）。
   const knowledge = derivePlayerKnowledge(runtime.reader.getObservationLog());
@@ -61,6 +63,7 @@ export function computeView(
     bondTier: runtime.reader.getBondTier(),
     observations,
     catSprite,
+    catPlace,
     actionSlots: runtime.reader.getActionSlots(),
     placements: runtime.reader.getPlacements(),
     knowledgeNotes,

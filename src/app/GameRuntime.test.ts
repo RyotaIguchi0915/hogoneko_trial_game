@@ -315,16 +315,19 @@ describe('GameRuntime — 観察履歴の蓄積・復元（EP-2.07 / B4 §9.2 / 
     rt1.advanceSegment();
     rt1.advanceSegment();
     const before = rt1.reader.getObservationLog();
-    expect(before).toHaveLength(2);
+    // 2 Segment 分。在室は「場所＋行動」で複数件になる（EP-4.02b）ため件数は固定しない。
+    expect(before.length).toBeGreaterThanOrEqual(2);
     rt1.save();
     rt1.dispose();
 
     // 再起動しただけでは履歴は増えない（構築時に自動観測しない）。
     const rt2 = GameRuntime.create({ storage, clock, seed: 42 });
     expect(rt2.reader.getObservationLog()).toEqual(before);
-    // さらに進めると続きから積まれる（追記のみ）。
+    // さらに進めると続きから積まれる（追記のみ＝既存分は書き換わらない）。
     rt2.advanceSegment();
-    expect(rt2.reader.getObservationLog()).toHaveLength(3);
+    const after = rt2.reader.getObservationLog();
+    expect(after.length).toBeGreaterThan(before.length);
+    expect(after.slice(0, before.length)).toEqual(before);
     rt2.dispose();
   });
 });

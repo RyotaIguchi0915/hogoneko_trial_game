@@ -18,6 +18,10 @@ export const LOCALES: LocalizationDictionary = {
     'phenomenon.self_grooming': '毛づくろいをしている',
     // 環境音（突発刺激・EP-4.02）— 聞こえた事実だけを言う（解釈しない）
     'phenomenon.sudden_noise': 'どこかで物音がした',
+    // 場所（文脈つき観察・EP-4.02b）— どこにいるかの事実だけ。「落ち着いている」等の解釈は書かない
+    'phenomenon.at_refuge': '部屋のすみにいる',
+    'phenomenon.at_vantage': '高いところにいる',
+    'phenomenon.at_open_floor': '部屋のまんなかにいる',
     'phenomenon.shed_fur': '毛が落ちている',
     'phenomenon.moved_object': '物の位置が変わっている',
     'phenomenon.food_reduced': 'ごはんが減っている',

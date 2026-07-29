@@ -17,6 +17,10 @@ export const PHENOMENON_CONTENT: readonly unknown[] = [
   { id: 'phenomenon.self_grooming', channel: 'direct', labelKey: 'phenomenon.self_grooming' },
   // sound（環境音・突発刺激・EP-4.02）— 聞こえた事実。猫の反応と並べて因果を読ませる。
   { id: 'phenomenon.sudden_noise', channel: 'sound', labelKey: 'phenomenon.sudden_noise' },
+  // place（場所・文脈つき観察 EP-4.02b）— 「どこにいるか」。行動の前に置かれ文脈を作る。
+  { id: 'phenomenon.at_refuge', channel: 'direct', labelKey: 'phenomenon.at_refuge' },
+  { id: 'phenomenon.at_vantage', channel: 'direct', labelKey: 'phenomenon.at_vantage' },
+  { id: 'phenomenon.at_open_floor', channel: 'direct', labelKey: 'phenomenon.at_open_floor' },
   // indirect（痕跡・不在 Segment の産物・EP-2.06）
   { id: 'phenomenon.shed_fur', channel: 'indirect', labelKey: 'phenomenon.shed_fur' },
   { id: 'phenomenon.moved_object', channel: 'indirect', labelKey: 'phenomenon.moved_object' },

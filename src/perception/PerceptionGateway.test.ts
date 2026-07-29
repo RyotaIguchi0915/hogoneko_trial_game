@@ -7,16 +7,17 @@ import {
   GATEWAY_DESCRIPTORS,
 } from './PerceptionGateway';
 import type { Trace } from '@core/state/trace';
-import type { Phenomenon } from './Phenomenon';
 
 function catWith(behavior: CatState['behavior']): CatState {
   return { ...initialCatState(), behavior };
 }
 
 describe('PerceptionGateway — 真実→現象の変換（B4 P-01）', () => {
-  it('在室・観測中は現在行動を観測可能な事実として返す', () => {
+  it('在室・観測中は「どこで」→「何をしているか」の順で返す（EP-4.02b）', () => {
+    // initialCatState の居場所は zone.refuge。場所が先・行動が後＝文脈から行動へ読める順。
     const out = toPhenomena(catWith('resting'), { inRoom: true, observing: true });
     expect(out).toEqual([
+      { subject: 'place', descriptor: 'phenomenon.at_refuge', observability: true },
       { subject: 'cat', descriptor: 'phenomenon.curled_resting', observability: true },
     ]);
   });
@@ -30,9 +31,8 @@ describe('PerceptionGateway — 真実→現象の変換（B4 P-01）', () => {
       ['grooming', 'phenomenon.self_grooming'],
     ];
     for (const [behavior, descriptor] of map) {
-      expect(toPhenomena(catWith(behavior), { inRoom: true, observing: true })[0]?.descriptor).toBe(
-        descriptor,
-      );
+      const out = toPhenomena(catWith(behavior), { inRoom: true, observing: true });
+      expect(out.find((p) => p.subject === 'cat')?.descriptor).toBe(descriptor);
     }
   });
 
@@ -69,9 +69,56 @@ describe('PerceptionGateway — 観測境界（憲章 I-1 / B4 P-01）', () => {
       'grooming',
     ];
     for (const b of behaviors) {
-      const p = toPhenomena(catWith(b), { inRoom: true, observing: true })[0] as Phenomenon;
-      expect(GATEWAY_DESCRIPTORS).toContain(p.descriptor);
+      // 場所を含む全 Phenomenon が既知語彙であること（EP-4.02b で場所が加わった）。
+      for (const p of toPhenomena(catWith(b), { inRoom: true, observing: true })) {
+        expect(GATEWAY_DESCRIPTORS).toContain(p.descriptor);
+      }
     }
+  });
+});
+
+describe('PerceptionGateway — 場所→現象（文脈つき観察・EP-4.02b / docs/18 B-B）', () => {
+  function catAt(zone: string, behavior: CatState['behavior'] = 'resting'): CatState {
+    return { ...initialCatState(), currentZone: zone, behavior };
+  }
+
+  it('居場所ごとに対応する場所 descriptor を返す（既知語彙・数値なし）', () => {
+    const map: Array<[string, string]> = [
+      ['zone.refuge', 'phenomenon.at_refuge'],
+      ['zone.vantage', 'phenomenon.at_vantage'],
+      ['zone.open_floor', 'phenomenon.at_open_floor'],
+    ];
+    for (const [zone, descriptor] of map) {
+      const place = toPhenomena(catAt(zone), { inRoom: true, observing: true }).find(
+        (p) => p.subject === 'place',
+      );
+      expect(place?.descriptor).toBe(descriptor);
+      expect(GATEWAY_DESCRIPTORS).toContain(descriptor);
+      for (const v of Object.values(place!)) expect(typeof v).not.toBe('number');
+    }
+  });
+
+  it('場所は行動より前に来る（文脈→行動の順で因果が読める）', () => {
+    const out = toPhenomena(catAt('zone.vantage', 'alert'), { inRoom: true, observing: true });
+    expect(out.map((p) => p.subject)).toEqual(['place', 'cat']);
+  });
+
+  it('隠れている間は場所を語らない（姿が見えないなら居場所も見えない・P-03）', () => {
+    const out = toPhenomena(catAt('zone.refuge', 'hiding'), { inRoom: true, observing: true });
+    expect(out).toEqual([
+      { subject: 'cat', descriptor: 'phenomenon.out_of_sight', observability: true },
+    ]);
+  });
+
+  it('不在 Segment でも場所を語らない（見ていないので分からない）', () => {
+    const out = toPhenomena(catAt('zone.vantage'), { inRoom: false, observing: true });
+    expect(out.some((p) => p.subject === 'place')).toBe(false);
+  });
+
+  it('未知の Zone では場所を語らない（未定義語彙を動的生成しない・B4 P-02）', () => {
+    const out = toPhenomena(catAt('zone.unknown'), { inRoom: true, observing: true });
+    expect(out.some((p) => p.subject === 'place')).toBe(false);
+    expect(out.map((p) => p.descriptor)).toEqual(['phenomenon.curled_resting']);
   });
 });
 
