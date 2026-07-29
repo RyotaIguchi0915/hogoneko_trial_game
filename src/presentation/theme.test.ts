@@ -46,3 +46,55 @@ describe('theme（ライト/ダーク配色・EP-3.12）', () => {
     expect(pillPrimary(LIGHT).borderRadius).toBe(pill(LIGHT).borderRadius);
   });
 });
+
+/** hex / rgba から [r,g,b] を取り出す。 */
+function rgb(color: string): readonly [number, number, number] {
+  const m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+  const h = color.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+/** rgba の不透明度（hex は 1）。 */
+function alpha(color: string): number {
+  const m = /^rgba\([^)]*,\s*([\d.]+)\)/.exec(color);
+  return m ? Number(m[1]) : 1;
+}
+const sum = (c: string) => rgb(c).reduce((a, v) => a + v, 0);
+
+describe('theme — 木と光の原則（docs/16 §1.4 / §2.1 / §2.9）', () => {
+  it('⚠️ 影に黒を使わない — 暖色であること（§1.4 の視覚原則）', () => {
+    // 黒い影を1つ入れた瞬間に、部屋は冷たくなる。
+    for (const s of [SCENE_LIGHT, SCENE_DARK]) {
+      const [r, g, b] = rgb(s.shade);
+      expect(r).toBeGreaterThan(b); // 赤みが青みより強い＝暖色
+      expect(r + g + b).toBeGreaterThan(0); // 純黒ではない
+    }
+  });
+
+  it('⚠️ 夜の寒色は窓だけ — 室内はすべて暖色のまま（§2.9）', () => {
+    const [wr, , wb] = rgb(SCENE_DARK.window);
+    expect(wb).toBeGreaterThan(wr); // 窓の外は青い
+    // 床や壁に青を入れた時点で、この作品の温度が失われる。
+    for (const key of ['bg', 'floor', 'furniture', 'woodPale', 'woodDeep', 'cat'] as const) {
+      const [r, , b] = rgb(SCENE_DARK[key]);
+      expect(r).toBeGreaterThanOrEqual(b);
+    }
+  });
+
+  it('木目は「にじませる」低不透明度（§2.1.2）', () => {
+    // はっきり描くと途端に安っぽくなる。
+    for (const s of [SCENE_LIGHT, SCENE_DARK]) {
+      expect(alpha(s.woodGrain)).toBeLessThanOrEqual(0.25);
+    }
+  });
+
+  it('木は光の当たる面のほうが陰より明るい（階調が成立している）', () => {
+    for (const s of [SCENE_LIGHT, SCENE_DARK]) {
+      expect(sum(s.woodPale)).toBeGreaterThan(sum(s.woodDeep));
+    }
+  });
+
+  it('ライトの窓は光そのもの、ダークの窓は夜の外（明暗が入れ替わる）', () => {
+    expect(sum(SCENE_LIGHT.window)).toBeGreaterThan(sum(SCENE_DARK.window));
+  });
+});

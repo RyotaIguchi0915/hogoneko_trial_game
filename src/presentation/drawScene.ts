@@ -82,6 +82,13 @@ const PLACEMENT_RECTS: Readonly<Record<string, RelRect>> = {
 /** 据え置きのクッション（zone.open_floor・content 定義で最初から在る）。 */
 const CUSHION_RECT: RelRect = { x: 0.2, y: 0.74, w: 0.26, h: 0.12 };
 
+/** 床が始まる高さ（部屋矩形に対する相対）。ここより上が壁、下が床（docs/16 §2.1.2）。 */
+const FLOOR_TOP = 0.42;
+/** 窓（docs/16a §6.2 の構図座標・左上）。 */
+const WINDOW_RECT: RelRect = { x: 0.08, y: 0.06, w: 0.26, h: 0.3 };
+/** 窓から床に落ちる光だまり（同上）。 */
+const LIGHT_POOL_RECT: RelRect = { x: 0.12, y: 0.5, w: 0.38, h: 0.34 };
+
 /** 部屋矩形に対する相対矩形を塗る。 */
 function fillRelRect(
   ctx: Scene2D,
@@ -117,13 +124,43 @@ export function drawScene(
   const roomW = width - margin * 2;
   const roomH = height - margin * 2;
 
+  const room = { x: roomX, y: roomY, w: roomW, h: roomH };
+
+  // 壁（奥）。
   ctx.fillStyle = colors.floor;
   ctx.fillRect(roomX, roomY, roomW, roomH);
+
+  // 窓（左上）。昼は光そのもの、夜は外の青——本作で**唯一の寒色**（docs/16 §2.1.3 / §2.9）。
+  ctx.fillStyle = colors.window;
+  fillRelRect(ctx, room, WINDOW_RECT);
+
+  // 床（手前）。光の当たる明るい木（docs/16 §2.1.2 の階調）。
+  ctx.fillStyle = colors.woodPale;
+  fillRelRect(ctx, room, { x: 0, y: FLOOR_TOP, w: 1, h: 1 - FLOOR_TOP });
+
+  // 窓から落ちる光だまり。床の左手に、やわらかく。
+  ctx.fillStyle = colors.lightPool;
+  fillRelRect(ctx, room, LIGHT_POOL_RECT);
+
+  // 木目。⚠️ 低不透明度で「にじませる」——はっきり描くと途端に安っぽくなる（docs/16 §2.1.2）。
+  ctx.strokeStyle = colors.woodGrain;
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) {
+    const y = roomY + roomH * (FLOOR_TOP + (1 - FLOOR_TOP) * (i / 4));
+    ctx.beginPath();
+    ctx.moveTo(roomX + roomW * 0.12, y);
+    ctx.lineTo(roomX + roomW * 0.88, y);
+    ctx.stroke();
+  }
+
+  // 手前ほど陰る。⚠️ 影は**黒ではなく暖色**（docs/16 §1.4 の視覚原則）。
+  ctx.fillStyle = colors.shade;
+  fillRelRect(ctx, room, { x: 0, y: 0.86, w: 1, h: 0.14 });
+
+  // 部屋の枠（構図固定・B3 ③: 毎回同じ画。変わるのは中身だけ）
   ctx.strokeStyle = colors.roomStroke;
   ctx.lineWidth = 2;
   ctx.strokeRect(roomX, roomY, roomW, roomH);
-
-  const room = { x: roomX, y: roomY, w: roomW, h: roomH };
 
   // 家具。据え置きのクッション（open_floor）＋プレイヤーが置いたもの（EP-4.04）。
   //   ⚠️ 置いていないものは描かない＝部屋は最初「素」で、整えた分だけ絵が変わる（働きかけの手応え）。

@@ -58,7 +58,10 @@ export const DARK: Tokens = {
   round: ROUND,
 };
 
-/** Canvas シーンの配色（drawScene 用）。CSS 変数が使えないので実値で持つ。 */
+/**
+ * Canvas シーンの配色（drawScene 用）。CSS 変数が使えないので実値で持つ。
+ * ⚠️ 木・光・影は docs/16 §2.1.2 / §2.1.3 の定義に対応（OI-6 Art Direction Bible）。
+ */
 export interface SceneColors {
   readonly bg: string;
   readonly roomStroke: string;
@@ -66,8 +69,20 @@ export interface SceneColors {
   readonly furniture: string;
   readonly cat: string;
   readonly text: string;
+  /** 木の階調（docs/16 §2.1.2）。光の当たる床面と、手前の陰り。 */
+  readonly woodPale: string;
+  readonly woodDeep: string;
+  /** 木目の線。⚠️ 必ず低不透明度で「にじませる」——はっきり描くと安っぽくなる（§2.1.2）。 */
+  readonly woodGrain: string;
+  /** 窓から差す光と、床に落ちる光だまり（§2.1.3）。 */
+  readonly lightPool: string;
+  /** 影。⚠️ **黒を使わない**——暖色の乗算にする（§1.4 の視覚原則）。 */
+  readonly shade: string;
+  /** 窓の外。⚠️ 夜の青は本作で**唯一許される寒色**（§2.1.3 / §2.9）。 */
+  readonly window: string;
 }
 
+/** ライト（昼の陽だまり）。窓からの自然光が床に落ちる。 */
 export const SCENE_LIGHT: SceneColors = {
   bg: '#fff8ea',
   roomStroke: '#ecdfc9',
@@ -75,8 +90,19 @@ export const SCENE_LIGHT: SceneColors = {
   furniture: '#e7d6b9',
   cat: '#c2a488',
   text: '#5d4c3f',
+  woodPale: '#ead6b6',
+  woodDeep: '#c19b6f',
+  woodGrain: 'rgba(120,92,60,.14)',
+  lightPool: '#ffeed2',
+  shade: 'rgba(122,96,70,.16)',
+  window: '#fff7e6',
 };
 
+/**
+ * ダーク（夜の静かな部屋）。暖色を保ったまま暗く。
+ * ⚠️ 単純な暗色フィルタにしない——木目が濁り、部屋が冷たくなる（docs/16 §2.9）。
+ * ⚠️ 寒色は window だけ。床や壁に青を入れた時点でこの作品の温度が失われる。
+ */
 export const SCENE_DARK: SceneColors = {
   bg: '#2a241d',
   roomStroke: '#443d34',
@@ -84,6 +110,12 @@ export const SCENE_DARK: SceneColors = {
   furniture: '#3f362c',
   cat: '#b89a7e',
   text: '#f0e7d8',
+  woodPale: '#453b31',
+  woodDeep: '#2b241d',
+  woodGrain: 'rgba(20,14,9,.22)',
+  lightPool: 'rgba(240,185,104,.16)', // 灯りのぬくもりが床に落ちる
+  shade: 'rgba(30,22,16,.3)',
+  window: '#3d4a5c', // 夜の外。唯一の寒色
 };
 
 /** テーマからトークン一式を選ぶ。 */

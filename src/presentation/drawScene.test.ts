@@ -108,6 +108,15 @@ describe('drawScene（EP-2.10 Canvas 基盤）', () => {
     expect(ctx.calls.drawImage ?? 0).toBe(0);
   });
 
+  it('壁・窓・床・光だまり・陰と、木目の線を描く（docs/16 §2.1 の世界観）', () => {
+    const ctx = stubCtx();
+    drawScene(ctx, view(), 400, 300);
+    // 背景/壁/窓/床/光だまり/陰/クッション … と面が重なる。
+    expect(ctx.calls.fillRect).toBeGreaterThanOrEqual(6);
+    // 木目は線で「にじませる」（3本）。
+    expect(ctx.calls.stroke).toBeGreaterThanOrEqual(3);
+  });
+
   it('観察が空でも … を描いて落ちない', () => {
     const ctx = stubCtx();
     expect(() =>
