@@ -107,6 +107,15 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     }
   });
 
+  it('「部屋を整える」で環境を設置でき、設置済みになると押せなくなる（EP-4.04）', () => {
+    startApp();
+    const before = screen.getByText('隠れ家を置く');
+    expect(before).toBeEnabled();
+    fireEvent.click(before);
+    expect(screen.getByText('✓ 隠れ家を置いた')).toBeInTheDocument(); // 設置済み表示
+    expect(screen.getByText('✓ 隠れ家を置いた')).toBeDisabled();
+  });
+
   it('「次へ」で観察が観察ノート（Player Knowledge）に積まれる（EP-2.07）', () => {
     startApp();
     expect(screen.queryByLabelText('観察ノート')).toBeNull(); // 初期は履歴なし

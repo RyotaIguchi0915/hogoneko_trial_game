@@ -62,6 +62,28 @@ export type InterventionResult =
 /** 去就の決定（EP-3.08）。迎える（adopt）／お別れする（return）。 */
 export type Decision = 'adopt' | 'return';
 
+/** 部屋を整える設置（環境アクション・EP-4.04）。隠れ家／高い台。 */
+export type PlacementKind = 'hiding_place' | 'high_perch';
+
+/** 設置の結果。既に置いてあれば失敗を返す（UI が静かに提示）。 */
+export type PlacementResult =
+  { readonly ok: true } | { readonly ok: false; readonly reason: 'already-placed' | 'not-playing' };
+
+/**
+ * 設置種別 → 対象 Zone とその属性デルタ（EP-4.04・仮値=監修）。
+ * ⚠️ 家具は「効果」を持たず Zone 属性へ寄与するだけ（docs/09:565）。同じ設置が個体次第で効いたり効かなかったりする
+ *    （猫がその Zone 型を好む＝profile 次第で滞在する・EP-4.01）。猫は操作しない（I-2）。
+ */
+const PLACEMENTS: Readonly<Record<PlacementKind, { zoneId: string; attrs: ZoneAttributeDelta }>> = {
+  // 隠れ家（段ボール）を refuge に。遮蔽・逃げ場・人との距離を足す（家具 hiding_box 相当）→ refuge が安全になる。
+  hiding_place: { zoneId: 'zone.refuge', attrs: { cover: 0.7, exits: 1, humanDistance: 0.2 } },
+  // 高い台（キャットタワー）を vantage に。高さ・見晴らし・遮蔽・逃げ場を足す（家具 cat_tower 相当）→ vantage が安全になる。
+  high_perch: {
+    zoneId: 'zone.vantage',
+    attrs: { height: 0.6, cover: 0.2, sightline: 0.4, exits: 1 },
+  },
+};
+
 /**
  * 絆のティア（EP-3.08）。trust（真実・数値）から導く**質的カテゴリ**。
  * ⚠️ L4 には数値でなくこのカテゴリだけを渡す（観測境界 I-1）。結末の出し分けに使う。
@@ -106,6 +128,8 @@ export interface RuntimeReader {
    * ⚠️ 結末画面の出し分け用。意味を持つのは deciding 以降。
    */
   getBondTier(): BondTier;
+  /** 設置済みの環境（EP-4.04）。UI の可否用（Player 側の情報・Cat State ではない）。 */
+  getPlacements(): readonly string[];
 }
 
 export interface GameRuntimeDeps {
@@ -148,6 +172,8 @@ export class GameRuntime {
   #zoneOverrides: Map<string, ZoneAttributeDelta>;
   /** 去就の決定（Persisted・deciding で確定・EP-3.08）。 */
   #decision: Decision | null;
+  /** プレイヤーが設置した環境の種別（Persisted・EP-4.04）。効果は #zoneOverrides に載る。本集合は UI の可否用。 */
+  #placements: Set<string>;
   /** 情動アークのペース補正（本編30日=1・短縮デモで日数比・EP-3.09）。日次 Trust の育ちに掛ける。 */
   readonly #paceScale: number;
   /**
@@ -182,6 +208,7 @@ export class GameRuntime {
       this.#firedEventIds = new Set(snapshot.firedEventIds ?? []);
       this.#zoneOverrides = new Map(Object.entries(snapshot.zoneOverrides ?? {}));
       this.#decision = snapshot.decision ?? null;
+      this.#placements = new Set(snapshot.placements ?? []);
     } else {
       this.#seed = deps.seed;
       this.#rng = createRng(deps.seed);
@@ -192,6 +219,7 @@ export class GameRuntime {
       this.#firedEventIds = new Set();
       this.#zoneOverrides = new Map();
       this.#decision = null;
+      this.#placements = new Set();
     }
 
     // この子の素性を seed から生成（profile ストリームは消費位置に非依存＝復元後も同一個体・EP-4.01）。
@@ -234,6 +262,7 @@ export class GameRuntime {
       getObservation: () => this.#lastObservation,
       getDecision: () => this.#decision,
       getBondTier: () => this.#bondTier(),
+      getPlacements: () => [...this.#placements],
     };
   }
 
@@ -268,6 +297,7 @@ export class GameRuntime {
       ...(this.#decision !== null ? { decision: this.#decision } : {}),
       firedEventIds: [...this.#firedEventIds],
       zoneOverrides: Object.fromEntries(this.#zoneOverrides),
+      placements: [...this.#placements],
     };
   }
 
@@ -476,6 +506,22 @@ export class GameRuntime {
     this.#catAccess.applyCatState(feedCat(this.#catAccess.getCatState()));
     this.#actionSlots -= 1;
     return { ok: true, slotsLeft: this.#actionSlots };
+  }
+
+  /**
+   * 部屋を整える（環境アクション・EP-4.04・docs/18 B-D）。設置の属性デルタを対象 Zone に累積する。
+   * ⚠️ 猫を動かすのではなく環境を変える（憲章 I-2）。猫がそこを使うか・落ち着くかは profile 次第（保証しない）。
+   *    効果は #zoneOverrides に載り、以降の Segment で猫が自律的に反応する。一度きり（同じ設置は重ねない）。
+   * 本編プレイ中（playing）のみ。既設置なら失敗を返す。
+   */
+  placeItem(kind: PlacementKind): PlacementResult {
+    if (this.#store.getGamePhase() !== 'playing') return { ok: false, reason: 'not-playing' };
+    if (this.#placements.has(kind)) return { ok: false, reason: 'already-placed' };
+    const { zoneId, attrs } = PLACEMENTS[kind];
+    const cur = this.#zoneOverrides.get(zoneId) ?? {};
+    this.#zoneOverrides.set(zoneId, mergeAttrDelta(cur, attrs));
+    this.#placements.add(kind);
+    return { ok: true };
   }
 
   /**

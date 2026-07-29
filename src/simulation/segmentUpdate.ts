@@ -78,11 +78,12 @@ export function updateCatSegment(state: CatState, ctx: SegmentContext): CatState
 
   // step6: Vigilance（下降＝baseline へ。上昇は step5 の刺激＋満たされない欲求の不安・EP-3.07）。
   //   空腹が高いほど落ち着けず baseline が上がる → 世話（空腹を鎮める）が間接的に安心＝信頼を支える。
-  //   神経質な子ほど baseline が高い（EP-4.01）。
+  //   神経質な子ほど baseline が高い（EP-4.01）。安全な場所ほど baseline が下がる（EP-4.04）。
   const vigilance = updateVigilance(
     affectIn,
     needsDistress(needsAfterPressure),
     profile.neuroticism,
+    env.zoneSecurity,
   );
 
   // step7: StressLoad（Vigilance の積分 − 減衰・上限0.8）

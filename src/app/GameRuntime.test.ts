@@ -101,6 +101,50 @@ describe('GameRuntime — createTruthReader（EP-12 dev 支援・読取専用）
   });
 });
 
+describe('GameRuntime — 部屋を整える: 環境アクション（EP-4.04）', () => {
+  it('本編中なら設置でき、getPlacements に載る。二度目は already-placed', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.begin();
+    expect(rt.placeItem('hiding_place')).toEqual({ ok: true });
+    expect(rt.reader.getPlacements()).toContain('hiding_place');
+    expect(rt.placeItem('hiding_place')).toEqual({ ok: false, reason: 'already-placed' });
+    rt.dispose();
+  });
+
+  it('本編前（booting）は設置できない（not-playing）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    expect(rt.placeItem('high_perch')).toEqual({ ok: false, reason: 'not-playing' });
+    expect(rt.reader.getPlacements()).toEqual([]);
+    rt.dispose();
+  });
+
+  it('設置はセーブ往復で保たれる（Persisted）', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 42 });
+    rt1.begin();
+    rt1.placeItem('high_perch');
+    rt1.save();
+    rt1.dispose();
+    const rt2 = GameRuntime.create({ storage, clock, seed: 42 });
+    expect(rt2.reader.getPlacements()).toContain('high_perch');
+    rt2.dispose();
+  });
+
+  it('合う環境（遮蔽好きの子に隠れ家）を用意すると落ち着き、信頼が育ちやすい（EP-4.04 の肝）', () => {
+    // seed=2 は神経質・遮蔽好き（EP-4.01 診断）。素の部屋では萎縮する。
+    const runTrust = (place: boolean) => {
+      const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 2 });
+      rt.begin();
+      if (place) rt.placeItem('hiding_place');
+      for (let i = 0; i < 6 * 15; i++) rt.advanceSegment();
+      const t = rt.createTruthReader().getCatState().relationship.trust;
+      rt.dispose();
+      return t;
+    };
+    expect(runTrust(true)).toBeGreaterThan(runTrust(false)); // 隠れ家がある方が信頼が育つ
+  });
+});
+
 describe('GameRuntime — 文脈つき観察: 環境音（EP-4.02）', () => {
   it('突発音が在室の観察に「物音がした」として現れる（引き金→反応の因果ペア）', () => {
     const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });

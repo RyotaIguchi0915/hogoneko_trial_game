@@ -81,6 +81,12 @@ export interface GameSnapshot {
    * ⚠️ 型は素の Union（@app の Decision と同一値・L1 は上位層を import しないため）。
    */
   readonly decision?: 'adopt' | 'return';
+  /**
+   * プレイヤーが設置した環境（Persisted・EP-4.04）。設置種別ID の集合（例 'hiding_place'）。
+   * ⚠️ 環境への効果自体は zoneOverrides に載る（再導出）。本フィールドは「何を設置済みか」（UI の可否）用。
+   *    任意（後方互換）: absent は [] で補完（B4 §9.6 追加フィールド・version bump 不要）。
+   */
+  readonly placements?: readonly string[];
 }
 
 export interface SaveMeta {
@@ -265,6 +271,10 @@ export function validateStructure(value: unknown): ValidationResult {
   // 去就の決定（EP-3.08）も任意。存在するなら 'adopt' | 'return' のみ。
   if (data.decision !== undefined && data.decision !== 'adopt' && data.decision !== 'return') {
     push('data.decision is invalid');
+  }
+  // 設置環境（EP-4.04）も任意（後方互換）。存在するなら文字列配列。
+  if (data.placements !== undefined && !Array.isArray(data.placements)) {
+    push('data.placements is invalid');
   }
 
   return { valid: errors.length === 0, errors };

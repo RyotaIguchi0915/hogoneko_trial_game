@@ -63,6 +63,14 @@ describe('needsDistress / 欲求不快が警戒に効く（EP-3.07）', () => {
     const calm: Affect = { arousal: 0.3, valence: 0, vigilance: 0.15, stressLoad: 0 };
     expect(updateVigilance(calm, 0.4)).toBeGreaterThan(updateVigilance(calm, 0));
   });
+
+  it('安全な場所ほど Vigilance baseline が下がる（EP-4.04・環境が猫を落ち着かせる）', () => {
+    const a: Affect = { arousal: 0.3, valence: 0, vigilance: 0.6, stressLoad: 0.2 };
+    const safe = updateVigilance(a, 0, 0.5, 0.9); // 安全な場所
+    const exposed = updateVigilance(a, 0, 0.5, 0.1); // むき出しの場所
+    expect(safe).toBeLessThan(updateVigilance(a, 0, 0.5, 0.5)); // 中立(0.5)より下がる
+    expect(exposed).toBeGreaterThan(updateVigilance(a, 0, 0.5, 0.5)); // 中立より上がる
+  });
 });
 
 describe('個体差の効き（EP-4.01）', () => {
