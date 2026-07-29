@@ -1,4 +1,5 @@
 import type { CatState } from './state/catState';
+import type { CatProfile } from './state/catProfile';
 import type { TimeState } from './time/TimeState';
 import type { GamePhase } from './state/gamePhase';
 
@@ -13,5 +14,7 @@ export interface TruthReader {
   getGamePhase(): GamePhase;
   getProgress(): TimeState;
   getCatState(): Readonly<CatState>;
+  /** この子の隠れた素性（個体差・EP-4.01）。開発時に「seed で別の猫か」を確認するため。 */
+  getCatProfile(): Readonly<CatProfile>;
   getRngState(): number;
 }

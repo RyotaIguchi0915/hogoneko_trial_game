@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { createTruthInspector } from './TruthInspector';
 import type { TruthReader } from '@core/index';
 import { initialCatState } from '@core/state/catState';
+import { NEUTRAL_PROFILE } from '@core/state/catProfile';
 
 const cat = { ...initialCatState(), arrived: true };
 const fakeReader: TruthReader = {
   getGamePhase: () => 'playing',
   getProgress: () => ({ day: 2, segment: 1, phase: 'running' }),
   getCatState: () => cat,
+  getCatProfile: () => NEUTRAL_PROFILE,
   getRngState: () => 999,
 };
 

@@ -13,7 +13,13 @@ export {
 } from './catDynamics';
 export { feedCat, INTERVENTION_PROVISIONAL } from './interventions';
 export { traceForBehavior } from './trace';
-export { rollStimulus, applyStimulusVigilance, STIMULUS_PROVISIONAL } from './stimulus';
+export {
+  rollStimulus,
+  applyStimulusVigilance,
+  stimulusSensitivity,
+  STIMULUS_PROVISIONAL,
+} from './stimulus';
+export { generateCatProfile, BASE_PROFILES, PROFILE_JITTER } from './catProfile';
 export { dueEvents } from './eventSchedule';
 export {
   selectZone,

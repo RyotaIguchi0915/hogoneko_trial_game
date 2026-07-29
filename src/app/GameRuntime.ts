@@ -26,6 +26,7 @@ import {
   type Trace,
 } from '@core/index';
 import { initialCatState } from '@core/state/catState';
+import { type CatProfile } from '@core/state/catProfile';
 import { getSimulationStateAccess, type SimulationStateAccess } from '@core/state/simulationAccess';
 import {
   SimulationSystem,
@@ -33,6 +34,7 @@ import {
   traceForBehavior,
   updateTrustDaily,
   rollStimulus,
+  generateCatProfile,
   dueEvents,
   environmentEffect,
   mergeAttrDelta,
@@ -141,6 +143,11 @@ export class GameRuntime {
   #decision: Decision | null;
   /** 情動アークのペース補正（本編30日=1・短縮デモで日数比・EP-3.09）。日次 Trust の育ちに掛ける。 */
   readonly #paceScale: number;
+  /**
+   * この子の隠れた素性（個体差・EP-4.01）。seed 由来で生成しプレイ中不変。**保存しない**（f(seed) で復元時に再生成）。
+   * ⚠️ L4 には渡さない（憲章 I-1）。sim（L2）にだけ配り、行動・場所・情動の効き方を個体化する。
+   */
+  readonly #profile: CatProfile;
 
   private constructor(deps: GameRuntimeDeps) {
     const config = deps.config ?? DEFAULT_TRIAL_CONFIG;
@@ -180,6 +187,8 @@ export class GameRuntime {
       this.#decision = null;
     }
 
+    // この子の素性を seed から生成（profile ストリームは消費位置に非依存＝復元後も同一個体・EP-4.01）。
+    this.#profile = generateCatProfile(this.#rng.fork('profile'));
     this.#catAccess = getSimulationStateAccess(this.#store);
     this.#sim = new SimulationSystem(this.#store);
     this.#env = buildDefaultEnvironment();
@@ -235,6 +244,7 @@ export class GameRuntime {
       getGamePhase: () => this.#store.getGamePhase(),
       getProgress: () => this.#time.now(),
       getCatState: () => this.#catAccess.getCatState(),
+      getCatProfile: () => this.#profile, // 個体差（EP-4.01・開発時に「seed で別の猫か」を確認）
       getRngState: () => this.#rng.state,
     };
   }
@@ -347,6 +357,7 @@ export class GameRuntime {
         // 突発刺激（環境音）を用途別 stream で決定論的に判定（EP-3.06・中盤の起伏）。
         stimulus: rollStimulus(this.#rng.fork('stimulus', state.day, state.segment)),
         paceScale: this.#paceScale, // 短縮デモで Familiarity の育ちも縮尺に（EP-3.09）
+        profile: this.#profile, // この子の素性で行動・場所・情動の効き方を個体化（EP-4.01・L4 には出さない I-1）
 
         // 行動選択の揺らぎは用途別ストリームで（B5 §8.4）。root を消費せず fork（保存位置に非依存・決定論）。
         behaviorRng: this.#rng.fork('behavior', state.day, state.segment),
@@ -366,7 +377,13 @@ export class GameRuntime {
       const cat = this.#catAccess.getCatState();
       this.#catAccess.applyCatState({
         ...cat,
-        relationship: updateTrustDaily(cat.relationship, cat.affect, this.#paceScale),
+        // 社会性が高い子ほど、穏やかな日が信頼に変わりやすい（EP-4.01）。
+        relationship: updateTrustDaily(
+          cat.relationship,
+          cat.affect,
+          this.#paceScale,
+          this.#profile.sociability,
+        ),
       });
     }
     // トライアル終了（30日消化）で去就の決定フェーズへ（playing のときのみ・EP-3.01 物語アーク）。

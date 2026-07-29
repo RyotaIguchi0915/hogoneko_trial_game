@@ -47,6 +47,16 @@ export const PROVISIONAL = {
    * 非対称: gain ≪ loss（信頼は数日で育ち、裏切り/強い恐怖で即座に崩れる）。
    */
   trustDaily: { gain: 0.04, loss: 0.15 },
+  /**
+   * 個体差の効き（EP-4.01・仮値）。神経質さは警戒 baseline を、社会性は信頼/慣れの育ちを左右する。
+   * ⚠️ いずれも 0.5（中立）で効果ゼロになるよう「(軸−0.5)」「0.5+軸」で掛ける。
+   */
+  profile: {
+    /** 神経質さが警戒 baseline に与える寄与（(neuroticism−0.5)×gain）。 */
+    neuroticismVigilanceGain: 0.2,
+    /** 社会性が信頼/慣れの育ちに掛かる係数の振れ幅。0.5+sociability → 0.5〜1.5 倍。 */
+    // （係数そのものはコードで 0.5+sociability として使う。ここは意図の記録。）
+  },
 } as const;
 
 // --- 各ステップ（§8.1 の該当番号を付す） ---
@@ -63,12 +73,14 @@ export function raiseNeedsPressure(needs: Needs): Needs {
 /**
  * §8.1 step6: Vigilance を baseline へ減衰させる（非対称の下降側）。
  * 上昇（刺激・突発音）は EP-2.09/2.02 が加える。baseline は StressLoad が押し上げる。
+ * neuroticism（個体の神経質さ・0..1・EP-4.01）は baseline を押し上げ/下げる。省略時 0.5（中立＝効果ゼロ）。
  */
-export function updateVigilance(affect: Affect, needsDistress = 0): number {
+export function updateVigilance(affect: Affect, needsDistress = 0, neuroticism = 0.5): number {
   const baseline = clamp01(
     PROVISIONAL.vigilanceBase +
       PROVISIONAL.vigilanceStressGain * affect.stressLoad +
-      PROVISIONAL.needsDistress.vigilanceGain * needsDistress,
+      PROVISIONAL.needsDistress.vigilanceGain * needsDistress +
+      PROVISIONAL.profile.neuroticismVigilanceGain * (neuroticism - 0.5),
   );
   return clamp01(baseline + (affect.vigilance - baseline) * PROVISIONAL.vigilanceDecay);
 }
@@ -106,11 +118,14 @@ export function updateRelationship(
   relationship: Relationship,
   inRoom: boolean,
   famScale = 1,
+  sociability = 0.5,
 ): Relationship {
+  // 社会性が高い子ほど、在室の時間が「慣れ」に変わりやすい（0.5+sociability=0.5〜1.5 倍・EP-4.01）。
+  const social = 0.5 + sociability;
   return {
     trust: relationship.trust,
     familiarity: clamp01(
-      relationship.familiarity + (inRoom ? PROVISIONAL.familiarityRise * famScale : 0),
+      relationship.familiarity + (inRoom ? PROVISIONAL.familiarityRise * famScale * social : 0),
     ),
   };
 }
@@ -125,14 +140,17 @@ export function updateTrustDaily(
   relationship: Relationship,
   affect: Affect,
   gainScale = 1,
+  sociability = 0.5,
 ): Relationship {
   const { gain, loss } = PROVISIONAL.trustDaily;
   // 落ち着き（0..1）: 警戒もストレスも低いほど高い。
   const calm = (1 - affect.vigilance) * (1 - affect.stressLoad);
+  // 社会性が高い子ほど、穏やかな時間が信頼に変わりやすい（0.5+sociability=0.5〜1.5 倍・EP-4.01）。省略時 0.5＝中立。
+  const social = 0.5 + sociability;
   // 慣れているほど、穏やかな時間が信頼に変わりやすい（0.5〜1.0 の係数）。
   // gainScale は日数比の補正（短縮デモで同じ弧を縮尺で見せる・EP-3.09）。1 で本編どおり。
-  const rise = gain * gainScale * calm * (0.5 + 0.5 * relationship.familiarity);
-  // ストレスは信頼を即座に削る（非対称）。gainScale は掛けない（下降は速いまま）。
+  const rise = gain * gainScale * social * calm * (0.5 + 0.5 * relationship.familiarity);
+  // ストレスは信頼を即座に削る（非対称）。gainScale/social は掛けない（下降は速いまま・誰でも崩れる）。
   const drop = loss * affect.stressLoad;
   return {
     trust: clamp01(relationship.trust + rise - drop),

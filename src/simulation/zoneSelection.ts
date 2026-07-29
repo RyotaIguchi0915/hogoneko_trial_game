@@ -1,5 +1,6 @@
 import type { Rng } from '@core/index';
 import type { Behavior } from '@core/state/catState';
+import { type CatProfile, NEUTRAL_PROFILE } from '@core/state/catProfile';
 import { clamp01 } from './catDynamics';
 
 /**
@@ -35,6 +36,11 @@ export const ZONE_SELECTION_PROVISIONAL = {
   inertia: 0.3,
   /** 行動が示す Zone 型への適合ボーナス。 */
   behaviorFit: 0.4,
+  /**
+   * 個体の場所選好の効き（EP-4.01・仮値）。遮蔽選好→refuge、高所選好→vantage を「(軸−0.5)×weight」で
+   * 押し引きする。0.5（中立）で効果ゼロ。同じ棚（vantage）が高所好きの子には効き、そうでない子には効かない。
+   */
+  preference: 0.4,
   /** softmax 温度＝性格（selectBehavior と同水準・低いほど予測可能）。 */
   temperature: 0.15,
 } as const;
@@ -49,26 +55,46 @@ const BEHAVIOR_ZONE_TYPE: Readonly<Record<Behavior, string | null>> = {
   grooming: null, // 現在地で行う（特定選好なし）
 };
 
-/** Zone の utility（相対値のみ意味を持つ・仮）。 */
-export function zoneUtility(zone: ZoneChoice, input: ZoneSelectionInput): number {
+/** 個体の場所選好ボーナス（遮蔽選好→refuge、高所選好→vantage・EP-4.01）。中立(0.5)で 0。 */
+function preferenceBonus(zoneType: string, profile: CatProfile): number {
+  const P = ZONE_SELECTION_PROVISIONAL.preference;
+  if (zoneType === 'refuge') return P * (profile.coverSeeking - 0.5);
+  if (zoneType === 'vantage') return P * (profile.heightSeeking - 0.5);
+  return 0;
+}
+
+/** Zone の utility（相対値のみ意味を持つ・仮）。profile は個体の場所選好（省略時は中立）。 */
+export function zoneUtility(
+  zone: ZoneChoice,
+  input: ZoneSelectionInput,
+  profile: CatProfile = NEUTRAL_PROFILE,
+): number {
   const P = ZONE_SELECTION_PROVISIONAL;
   const wantType = BEHAVIOR_ZONE_TYPE[input.behavior];
   const fit = wantType !== null && zone.type === wantType ? P.behaviorFit : 0;
   const inertia = zone.id === input.prevZone ? P.inertia : 0;
-  return P.security * zone.security + P.comfort * zone.comfort + fit + inertia;
+  return (
+    P.security * zone.security +
+    P.comfort * zone.comfort +
+    fit +
+    inertia +
+    preferenceBonus(zone.type, profile)
+  );
 }
 
 /**
  * 現在の行動・状態に適した Zone を選ぶ（B6 §2.5 温度付き softmax）。
  * @param rng behavior ストリームの RNG。省略時は argmax（決定論フォールバック）。
+ * @param profile 個体の場所選好（遮蔽/高所・EP-4.01）。省略時は中立。
  */
 export function selectZone(
   candidates: readonly ZoneChoice[],
   input: ZoneSelectionInput,
   rng?: Rng,
+  profile: CatProfile = NEUTRAL_PROFILE,
 ): string {
   if (candidates.length === 0) return input.prevZone; // 候補が無ければ据え置き
-  const utils = candidates.map((z) => zoneUtility(z, input));
+  const utils = candidates.map((z) => zoneUtility(z, input, profile));
 
   if (!rng) {
     let best = 0;
