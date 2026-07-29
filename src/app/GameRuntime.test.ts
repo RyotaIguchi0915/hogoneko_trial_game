@@ -3,6 +3,7 @@ import { GameRuntime } from './GameRuntime';
 import {
   createMemorySaveStorage,
   serialize,
+  isInRoomSegment,
   type GameSnapshot,
   type SaveStorage,
 } from '@core/index';
@@ -96,6 +97,28 @@ describe('GameRuntime — createTruthReader（EP-12 dev 支援・読取専用）
     expect(reader.getGamePhase()).toBe('booting');
     expect(reader.getCatState()).toEqual(initialCatState());
     expect(typeof reader.getRngState()).toBe('number');
+    rt.dispose();
+  });
+});
+
+describe('GameRuntime — 文脈つき観察: 環境音（EP-4.02）', () => {
+  it('突発音が在室の観察に「物音がした」として現れる（引き金→反応の因果ペア）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.begin();
+    for (let i = 0; i < 6 * 30; i++) rt.advanceSegment(); // 十分回せば音は起きる（chance 0.14）
+    const log = rt.reader.getObservationLog();
+    expect(log.some((e) => e.descriptor === 'phenomenon.sudden_noise')).toBe(true);
+    rt.dispose();
+  });
+
+  it('音は在室 Segment でのみ観測される（不在では聞かない・観測境界）', () => {
+    const rt = GameRuntime.create({ storage: createMemorySaveStorage(), clock, seed: 42 });
+    rt.begin();
+    for (let i = 0; i < 6 * 30; i++) rt.advanceSegment();
+    const noiseEntries = rt.reader
+      .getObservationLog()
+      .filter((e) => e.descriptor === 'phenomenon.sudden_noise');
+    for (const e of noiseEntries) expect(isInRoomSegment(e.segment)).toBe(true);
     rt.dispose();
   });
 });

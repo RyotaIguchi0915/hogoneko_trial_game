@@ -35,6 +35,9 @@ function traceDescriptor(kind: Trace['kind']): string {
   return `phenomenon.${kind}`;
 }
 
+/** 環境音（突発刺激）の観測 descriptor（EP-4.02）。「見えた/聞こえた事実」であって解釈ではない。 */
+const SOUND_DESCRIPTOR = 'phenomenon.sudden_noise';
+
 /** 産出しうる全痕跡種別（GATEWAY_DESCRIPTORS の網羅・語彙定義の検証用）。 */
 const TRACE_KINDS: readonly Trace['kind'][] = [
   'shed_fur',
@@ -49,6 +52,7 @@ export const GATEWAY_DESCRIPTORS: readonly string[] = Array.from(
     ...Object.values(BEHAVIOR_TO_DESCRIPTOR),
     'phenomenon.out_of_sight',
     ...TRACE_KINDS.map(traceDescriptor),
+    SOUND_DESCRIPTOR,
   ]),
 );
 
@@ -82,4 +86,14 @@ export function tracesToPhenomena(traces: readonly Trace[]): readonly Phenomenon
     descriptor: traceDescriptor(t.kind),
     observability: true,
   }));
+}
+
+/**
+ * 環境音（突発刺激）→ 現象へ変換する（純粋・EP-4.02・文脈つき観察）。
+ * 在室で「聞こえた」ときだけ観測される。これが猫の反応（同 Segment の行動）と並ぶことで、
+ * プレイヤーは「物音 → この子はこうする」という因果を読み、個体（音への敏感さ）を推し量れる。
+ * ⚠️ 「驚かせた」等の解釈は書かない。聞こえた事実（sudden_noise）のみ。数値は介在しない（I-1）。
+ */
+export function soundToPhenomena(heard: boolean): readonly Phenomenon[] {
+  return heard ? [{ subject: 'sound', descriptor: SOUND_DESCRIPTOR, observability: true }] : [];
 }
