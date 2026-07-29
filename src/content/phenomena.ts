@@ -21,6 +21,13 @@ export const PHENOMENON_CONTENT: readonly unknown[] = [
   { id: 'phenomenon.at_refuge', channel: 'direct', labelKey: 'phenomenon.at_refuge' },
   { id: 'phenomenon.at_vantage', channel: 'direct', labelKey: 'phenomenon.at_vantage' },
   { id: 'phenomenon.at_open_floor', channel: 'direct', labelKey: 'phenomenon.at_open_floor' },
+  // time（時間帯・文脈つき観察 EP-4.02d）— 観察の先頭に置かれ、その場面がいつのことかを示す。
+  { id: 'phenomenon.time_dawn', channel: 'direct', labelKey: 'phenomenon.time_dawn' },
+  { id: 'phenomenon.time_morning', channel: 'direct', labelKey: 'phenomenon.time_morning' },
+  { id: 'phenomenon.time_noon', channel: 'direct', labelKey: 'phenomenon.time_noon' },
+  { id: 'phenomenon.time_evening', channel: 'direct', labelKey: 'phenomenon.time_evening' },
+  { id: 'phenomenon.time_night', channel: 'direct', labelKey: 'phenomenon.time_night' },
+  { id: 'phenomenon.time_midnight', channel: 'direct', labelKey: 'phenomenon.time_midnight' },
   // indirect（痕跡・不在 Segment の産物・EP-2.06）
   { id: 'phenomenon.shed_fur', channel: 'indirect', labelKey: 'phenomenon.shed_fur' },
   { id: 'phenomenon.moved_object', channel: 'indirect', labelKey: 'phenomenon.moved_object' },

@@ -22,6 +22,13 @@ export const LOCALES: LocalizationDictionary = {
     'phenomenon.at_refuge': '部屋のすみにいる',
     'phenomenon.at_vantage': '高いところにいる',
     'phenomenon.at_open_floor': '部屋のまんなかにいる',
+    // 時間帯（文脈つき観察・EP-4.02d）— その場面がいつのことか。見えた事実だけ（「さみしい夜」等は書かない）
+    'phenomenon.time_dawn': 'まだ暗い',
+    'phenomenon.time_morning': '朝の光が入っている',
+    'phenomenon.time_noon': '昼の光',
+    'phenomenon.time_evening': '日が傾いている',
+    'phenomenon.time_night': '外は暗い',
+    'phenomenon.time_midnight': '夜がふけている',
     'phenomenon.shed_fur': '毛が落ちている',
     'phenomenon.moved_object': '物の位置が変わっている',
     'phenomenon.food_reduced': 'ごはんが減っている',
