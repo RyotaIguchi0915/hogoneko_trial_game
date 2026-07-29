@@ -2,7 +2,7 @@ import { DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock, type TrialConfig } 
 import { Localization } from '@data/index';
 import { GameRuntime } from '@app/index';
 import { LOCALES } from '@content/locales';
-import { derivePlayerKnowledge } from '@perception/index';
+import { derivePlayerKnowledge, resolvedDescriptor } from '@perception/index';
 import { spriteForDescriptor } from './sprites';
 import type { AppView } from './appView';
 
@@ -40,7 +40,14 @@ export function computeView(
 ): AppView {
   // 現 Segment の安定スナップショット（在室で戻った時は痕跡も含む・pending クリアの影響を受けない・EP-2.06）。
   const phenomena = runtime.reader.getObservation();
-  const observations = phenomena.map((p) => localization.resolve(p.descriptor));
+  // 立てた仮説に応じて観察文の解像度が上がる（EP-4.03・docs/06:681「唯一の支援」）。
+  // ⚠️ 正誤の合図ではない——**外れた仮説でも詳しくなる**。詳しい版の語彙が無ければ元の語に倒す。
+  const formed = runtime.reader.getHypotheses();
+  const describe = (descriptor: string): string => {
+    const key = resolvedDescriptor(descriptor, formed);
+    return localization.has(key) ? localization.resolve(key) : localization.resolve(descriptor);
+  };
+  const observations = phenomena.map((p) => describe(p.descriptor));
   // スプライトは猫の様子（subject:'cat'）から。音・痕跡は文字（観察）で示し、猫の姿勢は変えない（EP-4.02）。
   const catPhenomenon = phenomena.find((p) => p.subject === 'cat');
   const catSprite = spriteForDescriptor(catPhenomenon?.descriptor);
@@ -52,6 +59,13 @@ export function computeView(
   const knowledgeNotes = knowledge.observed.map(
     (o) => `${localization.resolve(o.descriptor)}${o.count > 1 ? ` ×${o.count}` : ''}`,
   );
+  // 仮説帳（EP-4.03）: いま立てられる候補（＝観測済みの現象に基づくものだけ）に、立てている印を添える。
+  const formedSet = new Set(formed);
+  const hypotheses = runtime.reader.getAvailableHypotheses().map((id) => ({
+    id,
+    label: localization.resolve(id),
+    formed: formedSet.has(id),
+  }));
   return {
     restoreStatus,
     day: progress.day,
@@ -66,6 +80,7 @@ export function computeView(
     catPlace,
     actionSlots: runtime.reader.getActionSlots(),
     placements: runtime.reader.getPlacements(),
+    hypotheses,
     knowledgeNotes,
   };
 }

@@ -17,6 +17,7 @@ function view(over: Partial<AppView>): AppView {
     catSprite: null,
     catPlace: null,
     actionSlots: 0,
+    hypotheses: [],
     placements: [],
     knowledgeNotes: [],
     ...over,

@@ -10,4 +10,5 @@ export type {
   BondTier,
   PlacementKind,
   PlacementResult,
+  HypothesisResult,
 } from './GameRuntime';

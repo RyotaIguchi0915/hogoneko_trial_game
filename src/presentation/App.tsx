@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { RestoreStatus } from '@core/index';
 import type { GameRuntime, Decision, BondTier, PlacementKind } from '@app/index';
 import { Scene } from './Scene';
+import { HypothesisNote } from './HypothesisNote';
 import { computeView } from './bootstrap';
 import type { AppView } from './appView';
 import { WATCH_TEMPO_MS, isWatchable, shouldStopWatching } from './watch';
@@ -220,6 +221,11 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
   const onPlace = (kind: PlacementKind) => {
     runtime.placeItem(kind); // 部屋を整える（環境を変える・猫は操作しない I-2・EP-4.04）
     runtime.save(); // 設置は永続（zoneOverrides / placements）→ 保存
+    refresh();
+  };
+  const onToggleHypothesis = (id: string) => {
+    runtime.toggleHypothesis(id); // 推し量る（正誤は判定されない・EP-4.03）
+    runtime.save(); // 仮説はプレイヤーの入力＝観察履歴から導出できないので保存が要る
     refresh();
   };
   const onProceed = () => {
@@ -486,6 +492,14 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
             ))}
           </div>
         )}
+
+        {/* 仮説帳（EP-4.03）。見た事実の下に、そこから推し量った言葉が並ぶ。正誤は示さない（U-8）。 */}
+        <HypothesisNote
+          tokens={T}
+          hypotheses={view.hypotheses}
+          onToggle={onToggleHypothesis}
+          disabled={watching}
+        />
       </div>
     </main>
   );

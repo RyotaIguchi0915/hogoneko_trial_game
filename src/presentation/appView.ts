@@ -8,6 +8,18 @@ import type { SpriteKey } from './sprites';
  * ⚠️ Cat State（真実）を含まない。observations は Phenomenon をローカライズ済みの文字列（数値なし・憲章 I-1）。
  * App / Scene / drawScene / bootstrap が共有するため独立モジュールに置く（循環 import 回避）。
  */
+/**
+ * 仮説ひとつ分の表示（EP-4.03）。
+ * ⚠️ formed は「立てているか」であって「合っているか」ではない。正誤という情報はどこにも存在しない。
+ */
+export interface HypothesisView {
+  readonly id: string;
+  /** 表示文言（推量形・ローカライズ済み）。 */
+  readonly label: string;
+  /** いま立てているか。 */
+  readonly formed: boolean;
+}
+
 export interface AppView {
   readonly restoreStatus: RestoreStatus;
   readonly day: number;
@@ -34,6 +46,12 @@ export interface AppView {
   readonly actionSlots: number;
   /** 設置済みの環境（EP-4.04）。部屋を整えるボタンの可否に使う（Player 側の情報・数値ではない）。 */
   readonly placements: readonly string[];
+  /**
+   * 仮説帳（EP-4.03）。**いま立てられる**仮説と、そのうち立てているものの印。
+   * ⚠️ 並ぶのはプレイヤー自身の推量であって、猫についての正解ではない。
+   *    正誤を示す印（✓/✗）を付けてはならない（docs/16 §2.8 U-8）。
+   */
+  readonly hypotheses: readonly HypothesisView[];
   /**
    * 観察ノート（これまで見た事実・頻度順・ローカライズ済み・EP-2.07）。
    * Player Knowledge（観察履歴から再生成）の静かな提示。数値は「観測回数」であり Cat State ではない（I-1）。
