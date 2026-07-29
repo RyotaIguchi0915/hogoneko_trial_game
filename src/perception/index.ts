@@ -22,7 +22,9 @@ export {
   HYPOTHESIS_TEMPLATES,
   availableHypotheses,
   isKnownHypothesis,
-  isDetailed,
-  resolvedDescriptor,
   type HypothesisTemplate,
 } from './hypotheses';
+
+// Insight — 立てた仮説が観察とどう噛み合っているか（EP-4.05）。
+// ⚠️ 数値は L4 に出さない。効くのは描写解像度だけで、反証が優勢なら静かに戻る（責めない）。
+export { deriveInsights, isDetailed, resolvedDescriptor, type Insight } from './insight';

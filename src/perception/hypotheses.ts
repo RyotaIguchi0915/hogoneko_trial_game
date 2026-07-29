@@ -6,9 +6,8 @@ import type { PlayerKnowledge } from './PlayerKnowledge';
  * ⚠️ G-2（観測境界）: このモジュールは Simulation（真実）を import しない。
  *    仮説の可否は**観察履歴だけ**から決まる。正解と照合しない——というより、**正解を知らない**。
  * ⚠️ **採点しない**（docs/06:616）。合っている／間違っているを一切示さない。
- *    唯一の支援は「描写解像度」（docs/06:681）＝仮説を持つと、その仮説に関わる現象の観察文が詳しくなる。
- *    **間違った仮説でも詳しくなる**。これは正誤の合図ではなく「そこに注意を向けている」ことの反映。
- * ⚠️ 確信度・理解段階は数値として L4 に出さない（憲章 I-1）。本 MVP はまだ確信度を持たない。
+ *    唯一の支援は「描写解像度」（docs/06:681）で、その判定は insight.ts が担う。
+ * ⚠️ 確信度・理解段階は数値として L4 に出さない（憲章 I-1）。
  */
 
 export interface HypothesisTemplate {
@@ -24,6 +23,20 @@ export interface HypothesisTemplate {
    * ⚠️ 正誤とは無関係。仮説が外れていても、その現象への描写は詳しくなる。
    */
   readonly detailFor: readonly string[];
+  /**
+   * この仮説に**沿う**観測（docs/06:126「反復＋対比＝仮説」の反復側・EP-4.05）。
+   * ⚠️ 「正解」ではない。観察がそう並んだ、というだけのこと。
+   */
+  readonly supportedBy: readonly string[];
+  /**
+   * この仮説に**沿わない**観測（同・対比側）。支持と両方が揃って初めて対比観測が成立する。
+   */
+  readonly contrastedBy: readonly string[];
+  /**
+   * この現象が同じ Segment にあるときだけ支持／反証を数える（引き金つきの仮説・EP-4.05）。
+   * 例: 「物音が苦手そう」は**物音がした Segment**の振る舞いだけが材料になる。
+   */
+  readonly conditionedOn?: string;
 }
 
 /**
@@ -37,24 +50,34 @@ export const HYPOTHESIS_TEMPLATES: readonly HypothesisTemplate[] = [
     id: 'hypothesis.noise_sensitive',
     requires: ['phenomenon.sudden_noise'],
     detailFor: ['phenomenon.sudden_noise'],
+    // ⚠️ 音がした Segment に限って「その時どうしていたか」を材料にする。
+    conditionedOn: 'phenomenon.sudden_noise',
+    supportedBy: ['phenomenon.out_of_sight', 'phenomenon.ears_orienting'],
+    contrastedBy: ['phenomenon.curled_resting', 'phenomenon.self_grooming'],
   },
   {
     // T-6 高所選好
     id: 'hypothesis.likes_height',
     requires: ['phenomenon.at_vantage'],
     detailFor: ['phenomenon.at_vantage'],
+    supportedBy: ['phenomenon.at_vantage'],
+    contrastedBy: ['phenomenon.at_refuge', 'phenomenon.at_open_floor'],
   },
   {
     // T-7 遮蔽選好
     id: 'hypothesis.likes_cover',
     requires: ['phenomenon.at_refuge'],
     detailFor: ['phenomenon.at_refuge'],
+    supportedBy: ['phenomenon.at_refuge'],
+    contrastedBy: ['phenomenon.at_vantage', 'phenomenon.at_open_floor'],
   },
   {
     // T-2 社会性: 人に最も近い Zone に居るのを見たときだけ立てられる。
     id: 'hypothesis.comes_close',
     requires: ['phenomenon.at_open_floor'],
     detailFor: ['phenomenon.at_open_floor'],
+    supportedBy: ['phenomenon.at_open_floor'],
+    contrastedBy: ['phenomenon.at_refuge', 'phenomenon.at_vantage'],
   },
 ];
 
@@ -73,23 +96,4 @@ export function isKnownHypothesis(id: string): boolean {
 export function availableHypotheses(knowledge: PlayerKnowledge): readonly string[] {
   const seen = new Set(knowledge.observed.map((o) => o.descriptor));
   return HYPOTHESIS_TEMPLATES.filter((t) => t.requires.every((r) => seen.has(r))).map((t) => t.id);
-}
-
-/**
- * 立てた仮説によって観察文の解像度が上がる現象かどうか（docs/06:681）。
- * ⚠️ **唯一の支援**。正誤は示さない。外れた仮説でも、その現象の描写は詳しくなる。
- */
-export function isDetailed(descriptor: string, formed: readonly string[]): boolean {
-  const held = new Set(formed);
-  return HYPOTHESIS_TEMPLATES.some((t) => held.has(t.id) && t.detailFor.includes(descriptor));
-}
-
-/**
- * 表示に使う descriptor を返す（解像度の反映）。
- *
- * 仮説を持っていれば `<descriptor>.detailed` を、持っていなければ元の descriptor を返す。
- * ⚠️ 詳しい版の語彙が無い場合に備え、L4 は Localization の解決に失敗したら元の語に倒すこと。
- */
-export function resolvedDescriptor(descriptor: string, formed: readonly string[]): string {
-  return isDetailed(descriptor, formed) ? `${descriptor}.detailed` : descriptor;
 }

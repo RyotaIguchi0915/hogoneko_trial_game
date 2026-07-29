@@ -2,7 +2,7 @@ import { DEFAULT_TRIAL_CONFIG, type SaveStorage, type Clock, type TrialConfig } 
 import { Localization } from '@data/index';
 import { GameRuntime } from '@app/index';
 import { LOCALES } from '@content/locales';
-import { derivePlayerKnowledge, resolvedDescriptor } from '@perception/index';
+import { derivePlayerKnowledge, resolvedDescriptor, deriveInsights } from '@perception/index';
 import { spriteForDescriptor } from './sprites';
 import type { AppView } from './appView';
 
@@ -43,8 +43,13 @@ export function computeView(
   // 立てた仮説に応じて観察文の解像度が上がる（EP-4.03・docs/06:681「唯一の支援」）。
   // ⚠️ 正誤の合図ではない——**外れた仮説でも詳しくなる**。詳しい版の語彙が無ければ元の語に倒す。
   const formed = runtime.reader.getHypotheses();
+  // 答え合わせ（EP-4.05）: 立てた仮説が観察とどう噛み合っているか。
+  // ⚠️ Insight は L4 に渡さない（数値・確信度を出さない・I-1）。効くのは下の解像度だけ。
+  //    反証が優勢になった仮説は解像度が静かに戻る——通知も警告も出さない（責めない・docs/06:1291）。
+  const observationLog = runtime.reader.getObservationLog();
+  const insights = deriveInsights(observationLog);
   const describe = (descriptor: string): string => {
-    const key = resolvedDescriptor(descriptor, formed);
+    const key = resolvedDescriptor(descriptor, formed, insights);
     return localization.has(key) ? localization.resolve(key) : localization.resolve(descriptor);
   };
   const observations = phenomena.map((p) => describe(p.descriptor));
@@ -55,7 +60,7 @@ export function computeView(
   const catPlace = phenomena.find((p) => p.subject === 'place')?.descriptor ?? null;
   const progress = runtime.reader.getProgress();
   // Player Knowledge を観察履歴から再生成（保存しない・G-2）。回数は「観測回数」で Cat State ではない（I-1）。
-  const knowledge = derivePlayerKnowledge(runtime.reader.getObservationLog());
+  const knowledge = derivePlayerKnowledge(observationLog);
   const knowledgeNotes = knowledge.observed.map(
     (o) => `${localization.resolve(o.descriptor)}${o.count > 1 ? ` ×${o.count}` : ''}`,
   );
