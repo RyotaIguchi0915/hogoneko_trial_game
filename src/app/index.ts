@@ -8,4 +8,6 @@ export type {
   InterventionResult,
   Decision,
   BondTier,
+  PlacementKind,
+  PlacementResult,
 } from './GameRuntime';

@@ -65,6 +65,8 @@ export const ROOM_CONTENT: readonly unknown[] = [
         furniture: ['furniture.cushion'],
       },
       {
+        // ⚠️ 素のゾーン（EP-4.04）: 家具は据え置かず、プレイヤーが「高い台を置く」で装備する。
+        //    高所好きの子はここが整うと落ち着く（＝環境を用意して待つ・docs/09）。
         id: 'zone.vantage',
         type: 'vantage',
         base: {
@@ -80,9 +82,11 @@ export const ROOM_CONTENT: readonly unknown[] = [
           softness: 0,
         },
         selfScent: 0.2,
-        furniture: ['furniture.cat_tower'],
+        furniture: [],
       },
       {
+        // ⚠️ 素のゾーン（EP-4.04）: 家具は据え置かず、プレイヤーが「隠れ家を置く」で装備する。
+        //    遮蔽好きの子はここが整うと落ち着く（＝環境を用意して待つ・docs/09）。
         id: 'zone.refuge',
         type: 'refuge',
         base: {
@@ -98,7 +102,7 @@ export const ROOM_CONTENT: readonly unknown[] = [
           softness: 0,
         },
         selfScent: 0.4,
-        furniture: ['furniture.hiding_box'],
+        furniture: [],
       },
     ],
   },

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { RestoreStatus } from '@core/index';
-import type { GameRuntime, Decision, BondTier } from '@app/index';
+import type { GameRuntime, Decision, BondTier, PlacementKind } from '@app/index';
 import { Scene } from './Scene';
 import { computeView } from './bootstrap';
 import type { AppView } from './appView';
@@ -202,6 +202,11 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
     runtime.save(); // 介入は永続状態（空腹）を変える → チェックポイント保存（B4 §9.4）
     refresh();
   };
+  const onPlace = (kind: PlacementKind) => {
+    runtime.placeItem(kind); // 部屋を整える（環境を変える・猫は操作しない I-2・EP-4.04）
+    runtime.save(); // 設置は永続（zoneOverrides / placements）→ 保存
+    refresh();
+  };
   const onProceed = () => {
     runtime.advancePhase(); // 結末の語りを1段進める（ending→epilogue→reflection・EP-3.01）
     runtime.save();
@@ -394,6 +399,45 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
           >
             次へ
           </button>
+        </div>
+
+        {/* 部屋を整える（環境アクション・EP-4.04）。猫は操作しない——場所を用意して、待つ。 */}
+        {/*   その子が使うか・落ち着くかは個体次第（合っていれば効く・外れれば効かない）。 */}
+        <div style={{ marginTop: '1.1rem' }}>
+          <p
+            style={{
+              margin: '0 0 0.5rem',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              color: T.ink3,
+            }}
+          >
+            部屋を整える
+          </p>
+          <div
+            style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', flexWrap: 'wrap' }}
+          >
+            {(
+              [
+                ['hiding_place', '隠れ家を置く', '隠れ家を置いた'],
+                ['high_perch', '高い台を置く', '高い台を置いた'],
+              ] as const
+            ).map(([kind, label, done]) => {
+              const placed = view.placements.includes(kind);
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  style={{ ...pillS, opacity: placed || watching ? 0.4 : 1 }}
+                  onClick={() => onPlace(kind)}
+                  disabled={placed || watching}
+                >
+                  {placed ? `✓ ${done}` : label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* 観察ノート（Player Knowledge・EP-2.07）。これまで見た事実だけをやさしく並べる（解釈しない・B7）。 */}

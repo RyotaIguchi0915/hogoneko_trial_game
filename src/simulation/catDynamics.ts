@@ -27,6 +27,11 @@ export const PROVISIONAL = {
   vigilanceBase: 0.15,
   vigilanceStressGain: 0.5,
   /**
+   * 今いる場所の安全度が警戒 baseline を下げる（EP-4.04・仮値）。安全な隠れ家では緊張を解ける。
+   * これが「合う環境を用意する→その子が落ち着く」を観察可能にする経路。(ZoneSecurity−0.5)×relief を baseline から引く。
+   */
+  vigilanceSecurityRelief: 0.35,
+  /**
    * 満たされない欲求（空腹）が生む不安（B5 §2/§3.4）。閾値を超えた空腹が警戒 baseline を押し上げる。
    * ⚠️ これは「ご飯＝信頼+」のメーターではない（憲章 I-2）。快適さを損なうと落ち着けず、結果として信頼が育ちにくい、
    *    という間接経路。世話（空腹を鎮める）は絆を"買う"のでなく、安心できる条件を整える。
@@ -75,12 +80,18 @@ export function raiseNeedsPressure(needs: Needs): Needs {
  * 上昇（刺激・突発音）は EP-2.09/2.02 が加える。baseline は StressLoad が押し上げる。
  * neuroticism（個体の神経質さ・0..1・EP-4.01）は baseline を押し上げ/下げる。省略時 0.5（中立＝効果ゼロ）。
  */
-export function updateVigilance(affect: Affect, needsDistress = 0, neuroticism = 0.5): number {
+export function updateVigilance(
+  affect: Affect,
+  needsDistress = 0,
+  neuroticism = 0.5,
+  zoneSecurity = 0.5,
+): number {
   const baseline = clamp01(
     PROVISIONAL.vigilanceBase +
       PROVISIONAL.vigilanceStressGain * affect.stressLoad +
       PROVISIONAL.needsDistress.vigilanceGain * needsDistress +
-      PROVISIONAL.profile.neuroticismVigilanceGain * (neuroticism - 0.5),
+      PROVISIONAL.profile.neuroticismVigilanceGain * (neuroticism - 0.5) -
+      PROVISIONAL.vigilanceSecurityRelief * (zoneSecurity - 0.5),
   );
   return clamp01(baseline + (affect.vigilance - baseline) * PROVISIONAL.vigilanceDecay);
 }

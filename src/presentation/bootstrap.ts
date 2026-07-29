@@ -62,6 +62,7 @@ export function computeView(
     observations,
     catSprite,
     actionSlots: runtime.reader.getActionSlots(),
+    placements: runtime.reader.getPlacements(),
     knowledgeNotes,
   };
 }
