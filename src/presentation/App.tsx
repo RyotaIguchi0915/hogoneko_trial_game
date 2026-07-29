@@ -217,6 +217,12 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
     runtime.save();
     refresh();
   };
+  const onRestart = () => {
+    // もう一度あずかる（リプレイ・EP-3.13）。セーブを消し、まっさらな状態で起動し直す。
+    // ⚠️ 巻き戻しではなく「別の子・別の30日」。確実に新規状態にするためリロードで作り直す（Pillar 4）。
+    runtime.clearSave();
+    if (typeof window !== 'undefined') window.location.reload();
+  };
 
   // タイトル（title）: 前提をやさしく伝え、「はじめる」で本編へ（新規プレイの入口・EP-3.10）。
   if (view.gamePhase === 'title') {
@@ -280,7 +286,15 @@ export function App({ runtime, initialView }: { runtime: GameRuntime; initialVie
     const decision: Decision = view.decision ?? 'adopt'; // 通常は決定済み（防御的既定）
     const tier: BondTier = view.bondTier;
     if (view.gamePhase === 'reflection') {
-      return <ArcScreen tokens={T} aria="ふりかえり" text={REFLECTION[tier]} actions={[]} />;
+      // 終端。ここから「もう一度あずかる」でタイトルへ戻れる（リプレイ・EP-3.13）。
+      return (
+        <ArcScreen
+          tokens={T}
+          aria="ふりかえり"
+          text={REFLECTION[tier]}
+          actions={[{ label: 'もう一度あずかる', onClick: onRestart }]}
+        />
+      );
     }
     const text =
       view.gamePhase === 'ending'

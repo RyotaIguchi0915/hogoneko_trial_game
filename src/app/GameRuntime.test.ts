@@ -72,6 +72,21 @@ describe('GameRuntime — 保存 → 再起動で復元（EP-14 リロード復�
     expect(rt2.reader.getRestoreStatus()).toBe('empty');
     rt2.dispose();
   });
+
+  it('clearSave 後は新規（empty）から始まる＝もう一度あずかる土台（EP-3.13）', () => {
+    const storage = createMemorySaveStorage();
+    const rt1 = GameRuntime.create({ storage, clock, seed: 1 });
+    rt1.advanceSegment();
+    rt1.advanceSegment();
+    expect(rt1.save().ok).toBe(true);
+    rt1.clearSave();
+    rt1.dispose();
+
+    const rt2 = GameRuntime.create({ storage, clock, seed: 1 });
+    expect(rt2.reader.getRestoreStatus()).toBe('empty');
+    expect(rt2.reader.getProgress()).toEqual({ day: 1, segment: 0, phase: 'running' });
+    rt2.dispose();
+  });
 });
 
 describe('GameRuntime — createTruthReader（EP-12 dev 支援・読取専用）', () => {

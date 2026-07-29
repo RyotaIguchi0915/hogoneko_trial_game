@@ -136,7 +136,7 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
       runtime.advanceSegment();
     }
     render(<App runtime={runtime} initialView={computeView(runtime, 'ok')} />);
-    // deciding: 二択 → 迎える → 結末の語り＋「つづける」→ epilogue → reflection（操作なし）。
+    // deciding: 二択 → 迎える → 結末の語り＋「つづける」→ epilogue → reflection（＋もう一度）。
     expect(screen.getByText('迎える')).toBeInTheDocument();
     expect(screen.getByText('お別れする')).toBeInTheDocument();
     fireEvent.click(screen.getByText('迎える'));
@@ -144,6 +144,40 @@ describe('Bootstrap / App smoke（localStorage + DOM）', () => {
     fireEvent.click(screen.getByText('つづける')); // ending → epilogue
     fireEvent.click(screen.getByText('つづける')); // epilogue → reflection
     expect(screen.getByLabelText('ふりかえり')).toBeInTheDocument();
+    expect(screen.getByText('もう一度あずかる')).toBeInTheDocument(); // 終端から再プレイ（EP-3.13）
+  });
+
+  it('reflection の「もう一度あずかる」でセーブを消して起動し直す（EP-3.13）', () => {
+    const storage = createLocalStorageSaveStorage();
+    const { runtime } = bootstrap({ storage, clock: fixedClock, seed: 1 });
+    runtime.start();
+    for (let i = 0; i < 400 && runtime.reader.getProgress().phase === 'running'; i += 1) {
+      runtime.advanceSegment();
+    }
+    render(<App runtime={runtime} initialView={computeView(runtime, 'ok')} />);
+    fireEvent.click(screen.getByText('お別れする'));
+    fireEvent.click(screen.getByText('つづける')); // ending → epilogue
+    fireEvent.click(screen.getByText('つづける')); // epilogue → reflection
+    runtime.save(); // 到達時点のセーブがある状態にしておく
+
+    // jsdom は location.reload を実装しない（再定義も不可）ため、location をモックに差し替える。
+    const original = window.location;
+    const reload = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...original, reload },
+    });
+    try {
+      fireEvent.click(screen.getByText('もう一度あずかる'));
+      expect(reload).toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: original });
+    }
+
+    // セーブは消えている → 同じ storage で起動し直すと「はじめから」（タイトル）。
+    const fresh = bootstrap({ storage, clock: fixedClock, seed: 2 });
+    expect(fresh.view.restoreStatus).toBe('empty');
+    expect(fresh.view.gamePhase).toBe('title');
   });
 
   it('リロード（同一 localStorage で再 bootstrap）で進行が復元され、タイトルを挟まない', () => {
