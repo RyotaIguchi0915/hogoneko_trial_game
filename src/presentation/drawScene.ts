@@ -40,6 +40,55 @@ export type Scene2D = Pick<
   textBaseline: CanvasTextBaseline;
 };
 
+/** 部屋矩形に対する相対位置（0..1）。座標系は docs/16a §6.2 の構図に対応する。 */
+interface RelPoint {
+  readonly x: number;
+  readonly y: number;
+}
+interface RelRect extends RelPoint {
+  readonly w: number;
+  readonly h: number;
+}
+
+/**
+ * 観測された場所（descriptor）→ 部屋の中の猫の位置（EP-4.02b / docs/16 §9 A-3）。
+ *
+ * ⚠️ 値は docs/16a §6.2 の構図座標に対応する（本番背景の導入時はそのまま canvas 正規化座標になる）。
+ * ⚠️ **Zone の属性と絵の位置が一致していることが要件**（docs/16 §6.2）。vantage は明るく高い所、
+ *    refuge は人から遠い暗いすみ、open_floor は手前の人に近い床。ここがずれると観察が矛盾し、
+ *    プレイヤーは「文と絵のどちらを信じるか」を失う。
+ */
+export const PLACE_POSITIONS: Readonly<Record<string, RelPoint>> = {
+  'phenomenon.at_vantage': { x: 0.48, y: 0.3 }, // 窓の右隣・高い所（lightLevel 最大）
+  'phenomenon.at_refuge': { x: 0.83, y: 0.68 }, // 右奥のすみ（暗く・人から最も遠い）
+  'phenomenon.at_open_floor': { x: 0.33, y: 0.82 }, // 手前まんなかの床（人に最も近い）
+};
+
+/** 場所が観測できないとき（未知の Zone 等）の既定位置。 */
+const DEFAULT_POSITION: RelPoint = { x: 0.42, y: 0.5 };
+
+/**
+ * プレイヤーが置いたもの（EP-4.04 の placements）→ 部屋の中の家具の位置。
+ * 置いたことが**絵に出る**ことで、働きかけに手応えが生まれる（docs/16 §5.3）。
+ * ⚠️ 猫がそれを使うかは個体次第（憲章 I-2）。ここは「置いた」事実だけを描き、効果を示唆しない。
+ */
+const PLACEMENT_RECTS: Readonly<Record<string, RelRect>> = {
+  high_perch: { x: 0.38, y: 0.2, w: 0.2, h: 0.3 }, // 高い台（zone.vantage）
+  hiding_place: { x: 0.72, y: 0.52, w: 0.22, h: 0.26 }, // 隠れ家（zone.refuge）
+};
+
+/** 据え置きのクッション（zone.open_floor・content 定義で最初から在る）。 */
+const CUSHION_RECT: RelRect = { x: 0.2, y: 0.74, w: 0.26, h: 0.12 };
+
+/** 部屋矩形に対する相対矩形を塗る。 */
+function fillRelRect(
+  ctx: Scene2D,
+  room: { readonly x: number; readonly y: number; readonly w: number; readonly h: number },
+  rel: RelRect,
+): void {
+  ctx.fillRect(room.x + room.w * rel.x, room.y + room.h * rel.y, room.w * rel.w, room.h * rel.h);
+}
+
 /**
  * 論理サイズ (width×height, CSS px) に対してシーンを描く。
  * DPR スケールは呼び出し側（Scene.tsx）が ctx に適用済みである前提。
@@ -72,23 +121,28 @@ export function drawScene(
   ctx.lineWidth = 2;
   ctx.strokeRect(roomX, roomY, roomW, roomH);
 
-  // 隠れ場所（refuge の家具・プレースホルダ）: 右下の箱
-  const boxW = roomW * 0.24;
-  const boxH = roomH * 0.22;
-  const boxX = roomX + roomW - boxW - roomW * 0.08;
-  const boxY = roomY + roomH - boxH - roomH * 0.08;
-  ctx.fillStyle = colors.furniture;
-  ctx.fillRect(boxX, boxY, boxW, boxH);
+  const room = { x: roomX, y: roomY, w: roomW, h: roomH };
 
-  // 猫: 観察可能な姿勢（catSprite）があるときだけ、部屋の中央にそっと置く。
-  //   catSprite=null（隠れ/不在）なら描かない。位置は Cat の location 未実装のため暫定中央。
-  //   対応スプライト画像が読込済みなら drawImage、未読込なら楕円プレースホルダにフォールバック。
+  // 家具。据え置きのクッション（open_floor）＋プレイヤーが置いたもの（EP-4.04）。
+  //   ⚠️ 置いていないものは描かない＝部屋は最初「素」で、整えた分だけ絵が変わる（働きかけの手応え）。
+  ctx.fillStyle = colors.furniture;
+  fillRelRect(ctx, room, CUSHION_RECT);
+  for (const kind of view.placements) {
+    const rect = PLACEMENT_RECTS[kind];
+    if (rect) fillRelRect(ctx, room, rect);
+  }
+
+  // 猫: 観察可能な姿勢（catSprite）があるときだけ、**観測された場所**（catPlace）に描く（EP-4.02b）。
+  //   ⚠️ 位置は観察文とまったく同じ Phenomenon 由来。文が「高いところにいる」と言えば絵もそこに描かれる。
+  //   catSprite=null（隠れ/不在）なら描かない。画像が未読込なら楕円プレースホルダにフォールバック。
   if (view.catSprite) {
-    const cx = roomX + roomW * 0.42;
-    const cy = roomY + roomH * 0.5;
+    const pos =
+      (view.catPlace !== null ? PLACE_POSITIONS[view.catPlace] : undefined) ?? DEFAULT_POSITION;
+    const cx = roomX + roomW * pos.x;
+    const cy = roomY + roomH * pos.y;
     const image = sprites[view.catSprite];
     if (image) {
-      const size = Math.min(roomW, roomH) * 0.42;
+      const size = Math.min(roomW, roomH) * 0.34;
       ctx.drawImage(image, cx - size / 2, cy - size / 2, size, size);
     } else {
       ctx.fillStyle = colors.cat;
